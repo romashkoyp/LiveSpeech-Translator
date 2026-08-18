@@ -115,7 +115,7 @@ The compiled binary will be placed in `dist\LiveSpeech-Translator.exe`.
 
 ### 1. Free Virtual Audio Drivers Installation
 - **VB-CABLE Driver** (Standard): [vb-audio.com/Cable](https://vb-audio.com/Cable/index.htm)
-- **Hi-Fi CABLE Driver**: [vb-audio.com/Cable/index.htm#DownloadHiFiCable](https://vb-audio.com/Cable/index.htm#DownloadHiFiCable)
+- **Hi-Fi CABLE Driver**: [vb-audio.com/Cable/index.htm#DownloadHiFiCable](https://vb-audio.com/Cable/index.htm#DownloadASIOBridge)
 
 *(Restart your PC after installing the audio drivers).*
 
