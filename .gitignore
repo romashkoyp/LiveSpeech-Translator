@@ -1,0 +1,11 @@
+*.txt
+.venv/
+*.log
+.env
+gemini_docs.md
+config.json
+__pycache__/
+*.pyc
+build/
+*.spec
+cli-version/

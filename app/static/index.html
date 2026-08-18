@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LiveSpeech Translator</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <!-- ── STATUS BAR ──────────────────────────────────────────── -->
+  <header class="status-bar">
+    <div class="status-left">
+      <span class="app-logo">⚡</span>
+      <span class="app-title">LiveSpeech Translator</span>
+      <span class="status-badge" id="statusBadge">
+        <span class="status-dot"></span>
+        <span class="status-text">Ready</span>
+      </span>
+    </div>
+    <div class="status-center">
+      <span class="metric" id="metricModel" title="Active Model" style="display: none;">Model:
+        gemini-3.5-live-translate</span>
+      <span class="metric-separator" id="modelSeparator" style="display: none;">│</span>
+      <span class="metric" id="metricSession" title="Session Time">Session: 00:00:00</span>
+    </div>
+    <div class="status-right">
+      <button class="btn-header" id="btnSettings" title="Settings & API Key">
+        <span class="btn-header-icon">⚙️</span>
+        <span class="btn-header-text">Settings / API Key</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ── MAIN CONTENT ────────────────────────────────────────── -->
+  <main class="main-content">
+
+    <!-- ── MODE BAR ──────────────────────────────────────────── -->
+    <section class="mode-bar">
+      <div class="mode-buttons">
+        <button class="mode-btn active" data-mode="bidirectional" id="modeBidirectional"
+          title="Full meeting mode: translate in both directions simultaneously">
+          ⚡ Bidirectional (Meeting Mode)
+        </button>
+        <button class="mode-btn" data-mode="outgoing" id="modeOutgoing" title="Translate your microphone only">
+          🎙️ Outgoing Only
+        </button>
+        <button class="mode-btn" data-mode="incoming" id="modeIncoming" title="Translate meeting audio only">
+          🎧 Incoming Only
+        </button>
+      </div>
+      <button class="btn-primary" id="btnStartStop">
+        <span class="btn-icon-inner">▶</span>
+        <span class="btn-label">START STREAMING (Space)</span>
+      </button>
+    </section>
+
+    <!-- ── DUAL CHANNEL CONTROLS ─────────────────────────────── -->
+    <section class="channels-panel">
+
+      <!-- Card 1: Outgoing (You → Meeting) -->
+      <div class="channel-card outgoing" id="cardOutgoing">
+        <div class="channel-header outgoing-header">
+          <span class="channel-icon">🎙️</span>
+          <span class="channel-title">Outgoing Translation</span>
+          <span class="channel-subtitle">You → Meeting</span>
+        </div>
+        <div class="channel-body">
+          <div class="channel-grid">
+            <!-- Row 1, Col 1: Input Device (2/3 width) -->
+            <div class="channel-field field-input">
+              <label class="control-label">Input (Microphone)</label>
+              <select class="select-device" id="outgoingInputDevice"></select>
+              <div class="meter-row">
+                <span class="meter-label">IN:</span>
+                <div class="vu-meter-container">
+                  <div class="vu-meter-bar" id="outgoingInputMeter"></div>
+                </div>
+                <span class="meter-value" id="outgoingInputMeterVal">0%</span>
+              </div>
+            </div>
+
+            <!-- Row 1, Col 2: Target Language (1/3 width) - Searchable Combobox -->
+            <div class="channel-field field-lang">
+              <label class="control-label">Target Language</label>
+              <div class="custom-select-container" id="outgoingLangContainer">
+                <input type="text" class="select-search-input" id="outgoingTargetLanguage"
+                  placeholder="Select language..." autocomplete="off">
+                <span class="select-arrow"></span>
+                <div class="select-dropdown" id="outgoingLangDropdown"></div>
+              </div>
+            </div>
+
+            <!-- Row 2, Col 1: Output Device (2/3 width) -->
+            <div class="channel-field field-output">
+              <div class="label-row">
+                <label class="control-label">Output (Virtual Cable)</label>
+                <button class="btn-micro" id="btnTestOutgoing" title="Play test sound" style="display: none;">🔊
+                  Test</button>
+              </div>
+              <select class="select-device" id="outgoingOutputDevice"></select>
+              <div class="meter-row">
+                <span class="meter-label">OUT:</span>
+                <div class="vu-meter-container">
+                  <div class="vu-meter-bar vu-output" id="outgoingOutputMeter"></div>
+                </div>
+                <span class="meter-value" id="outgoingOutputMeterVal">0%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Incoming (Meeting → You) -->
+      <div class="channel-card incoming" id="cardIncoming">
+        <div class="channel-header incoming-header">
+          <span class="channel-icon">🎧</span>
+          <span class="channel-title">Incoming Translation</span>
+          <span class="channel-subtitle">Meeting → You</span>
+        </div>
+        <div class="channel-body">
+          <div class="channel-grid">
+            <!-- Row 1, Col 1: Input Device (2/3 width) -->
+            <div class="channel-field field-input">
+              <label class="control-label">Input (Hi-Fi Cable)</label>
+              <select class="select-device" id="incomingInputDevice"></select>
+              <div class="meter-row">
+                <span class="meter-label">IN:</span>
+                <div class="vu-meter-container">
+                  <div class="vu-meter-bar" id="incomingInputMeter"></div>
+                </div>
+                <span class="meter-value" id="incomingInputMeterVal">0%</span>
+              </div>
+            </div>
+
+            <!-- Row 1, Col 2: Target Language (1/3 width) - Searchable Combobox -->
+            <div class="channel-field field-lang">
+              <label class="control-label">Target Language</label>
+              <div class="custom-select-container" id="incomingLangContainer">
+                <input type="text" class="select-search-input" id="incomingTargetLanguage"
+                  placeholder="Select language..." autocomplete="off">
+                <span class="select-arrow"></span>
+                <div class="select-dropdown" id="incomingLangDropdown"></div>
+              </div>
+            </div>
+
+            <!-- Row 2, Col 1: Output Device (2/3 width) -->
+            <div class="channel-field field-output">
+              <div class="label-row">
+                <label class="control-label">Output (Headphones)</label>
+                <button class="btn-micro" id="btnTestIncoming" title="Play test sound">🔊 Test</button>
+              </div>
+              <select class="select-device" id="incomingOutputDevice"></select>
+              <div class="meter-row">
+                <span class="meter-label">OUT:</span>
+                <div class="vu-meter-container">
+                  <div class="vu-meter-bar vu-output" id="incomingOutputMeter"></div>
+                </div>
+                <span class="meter-value" id="incomingOutputMeterVal">0%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ── TRANSCRIPT FEED ─────────────────────────────────── -->
+    <section class="transcript-section">
+      <div class="transcript-header">
+        <div class="transcript-header-left">
+          <span class="transcript-header-icon">💬</span>
+          <span class="transcript-header-title">Transcript</span>
+        </div>
+      </div>
+      <div class="transcript-feed" id="transcriptFeed">
+        <div class="transcript-placeholder">
+          <span class="placeholder-icon">🎧</span>
+          <p>Press <strong>Start Streaming</strong> to begin live translation.</p>
+          <p class="placeholder-sub">Audio will play through your selected output devices.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── BOTTOM TOOLBAR ──────────────────────────────────── -->
+    <footer class="bottom-toolbar">
+      <div class="toolbar-left">
+        <input type="text" class="search-input" id="searchTranscripts" placeholder="🔍 Search transcripts...">
+        <label class="toggle-label">
+          <input type="checkbox" id="autoScroll" checked>
+          <span>Auto-Scroll</span>
+        </label>
+        <button class="btn-toolbar" id="btnClear" title="Clear transcripts">🧹 Clear</button>
+      </div>
+      <div class="toolbar-right">
+        <button class="btn-toolbar btn-export" id="btnExportTxt" title="Export as TXT">📄 Export TXT</button>
+      </div>
+    </footer>
+  </main>
+
+  <!-- ── SETTINGS MODAL ──────────────────────────────────────── -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>⚙️ Settings & API Key</h2>
+        <button class="btn-close" id="btnCloseSettings">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="setting-group">
+          <label class="setting-label">Google Gemini API Key</label>
+          <div class="input-row">
+            <input type="password" class="setting-input" id="apiKeyInput" placeholder="Enter your Gemini API Key">
+            <button class="btn-small" id="btnToggleKey" title="Show/Hide API Key">👁️</button>
+            <button class="btn-small danger" id="btnResetKey" title="Delete API Key from config.json">🗑️</button>
+          </div>
+          <span class="setting-hint" id="apiKeyStatus"></span>
+        </div>
+        <div class="setting-group">
+          <label class="setting-label">Model</label>
+          <input type="text" class="setting-input" id="modelInput" value="gemini-3.5-live-translate-preview" readonly>
+          <span class="setting-hint">Ultra-low latency streaming audio & subtitle translation</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-toolbar" id="btnTestConnection">🔄 Test Connection</button>
+        <div class="modal-footer-right">
+          <button class="btn-toolbar" id="btnDiscardSettings">Discard</button>
+          <button class="btn-primary btn-save" id="btnSaveSettings">💾 Save & Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+
+</html>
