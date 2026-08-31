@@ -16,6 +16,7 @@ else:
     ROOT_DIR = Path(__file__).resolve().parent.parent
 
 CONFIG_PATH = ROOT_DIR / "config.json"
+TRANSCRIPTS_PATH = ROOT_DIR / "transcripts.json"
 
 # Supported target languages — full list from Gemini Live Translate docs
 # https://ai.google.dev/gemini-api/docs/live-api/live-translate#supported-languages
@@ -220,3 +221,36 @@ def _deep_copy_defaults() -> dict:
         "outgoing": dict(DEFAULTS["outgoing"]),
         "incoming": dict(DEFAULTS["incoming"]),
     }
+
+
+def load_transcripts() -> list[dict]:
+    """Load saved transcript entries from transcripts.json."""
+    if not TRANSCRIPTS_PATH.exists():
+        return []
+    try:
+        with open(TRANSCRIPTS_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def save_transcripts(entries: list[dict]) -> None:
+    """Save transcript entries to transcripts.json."""
+    try:
+        TRANSCRIPTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(TRANSCRIPTS_PATH, "w", encoding="utf-8") as f:
+            json.dump(entries, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"Error saving transcripts to {TRANSCRIPTS_PATH}: {e}")
+
+
+def clear_transcripts() -> None:
+    """Clear and truncate transcripts.json."""
+    try:
+        if TRANSCRIPTS_PATH.exists():
+            with open(TRANSCRIPTS_PATH, "w", encoding="utf-8") as f:
+                json.dump([], f)
+    except Exception as e:
+        print(f"Error clearing transcripts in {TRANSCRIPTS_PATH}: {e}")
+

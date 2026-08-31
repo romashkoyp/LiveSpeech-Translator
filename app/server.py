@@ -18,7 +18,15 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from app.config import load_config, save_config, get_api_key, SUPPORTED_LANGUAGES
+from app.config import (
+    load_config,
+    save_config,
+    get_api_key,
+    SUPPORTED_LANGUAGES,
+    load_transcripts,
+    save_transcripts,
+    clear_transcripts,
+)
 from app.audio_manager import AudioManager
 from app.gemini_live import GeminiLiveTranslator
 
@@ -356,14 +364,25 @@ async def get_status():
 
 @app.get("/api/transcript")
 async def get_transcript():
-    """Return full transcript log."""
-    return {"entries": transcript_log}
+    """Return full transcript log from transcripts.json."""
+    entries = load_transcripts()
+    return {"entries": entries}
+
+
+@app.post("/api/transcript")
+async def save_transcript_entries(payload: dict):
+    """Save transcript entries directly to transcripts.json."""
+    entries = payload.get("entries", [])
+    if isinstance(entries, list):
+        save_transcripts(entries)
+    return {"status": "ok", "count": len(entries)}
 
 
 @app.post("/api/transcript/clear")
 async def clear_transcript():
-    """Clear transcript log."""
+    """Clear transcript log and truncate transcripts.json."""
     transcript_log.clear()
+    clear_transcripts()
     await broadcast("transcript_cleared", {})
     return {"status": "ok"}
 

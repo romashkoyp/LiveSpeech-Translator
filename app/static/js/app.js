@@ -18,6 +18,11 @@
   // ── DOM References ──────────────────────────────────────────────
 
   const $ = (sel) => document.querySelector(sel);
+  const mainContent = $('.main-content');
+  const transcriptSection = $('#transcriptSection');
+  const btnMaximizeTranscript = $('#btnMaximizeTranscript');
+  const btnScrollTop = $('#btnScrollTop');
+  const btnScrollBottom = $('#btnScrollBottom');
   const statusBadge = $('#statusBadge');
   const statusText = statusBadge.querySelector('.status-text');
   const metricModel = $('#metricModel');
@@ -399,6 +404,7 @@
     await loadDevices();
     await loadLanguages();
     await loadConfig();
+    await loadTranscriptsFromServer();
     connectWebSocket();
     bindEvents();
   }
@@ -723,10 +729,16 @@
 
   // ── Audio Meters ────────────────────────────────────────────────
 
+  function formatDbLevel(level) {
+    if (!level || level <= 0.001) return '-∞ dB';
+    const db = Math.round(level * 60 - 60);
+    return `${db} dB`;
+  }
+
   function setMeter(meterEl, valEl, level) {
     const pct = Math.min(100, Math.max(0, Math.round(level * 100)));
     meterEl.style.width = `${pct}%`;
-    valEl.textContent = `${pct}%`;
+    valEl.textContent = formatDbLevel(level);
   }
 
   function resetMeters() {
@@ -734,8 +746,102 @@
       m.style.width = '0%';
     });
     [outgoingInputMeterVal, outgoingOutputMeterVal, incomingInputMeterVal, incomingOutputMeterVal].forEach(v => {
-      v.textContent = '0%';
+      v.textContent = '-∞ dB';
     });
+  }
+
+  // ── Transcript Persistence (transcripts.json) ───────────────────
+
+  let saveTranscriptsTimer = null;
+
+  function saveTranscriptsToServer() {
+    if (saveTranscriptsTimer) clearTimeout(saveTranscriptsTimer);
+    saveTranscriptsTimer = setTimeout(async () => {
+      try {
+        const entries = [];
+        const entryEls = transcriptFeed.querySelectorAll('.transcript-entry');
+        entryEls.forEach(el => {
+          if (el.dataset.channel === 'system') return;
+          const timeEl = el.querySelector('.transcript-time');
+          const timeText = timeEl ? timeEl.textContent.replace(/^\[|\]$/g, '').trim() : '';
+          entries.push({
+            id: el.dataset.id || '',
+            channel: el.dataset.channel || 'outgoing',
+            time: timeText,
+            srcTag: el.dataset.srcTag || '[AUTO]:',
+            tgtTag: el.dataset.tgtTag || '[EN]:',
+            rawSource: el.dataset.rawSource || '',
+            rawTranslation: el.dataset.rawTranslation || ''
+          });
+        });
+        await fetch(`${API}/transcript`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entries }),
+        });
+      } catch (e) {
+        console.warn('Failed to save transcripts to server:', e);
+      }
+    }, 250);
+  }
+
+  function updateScrollButtonsVisibility() {
+    if (!transcriptFeed || !btnScrollTop || !btnScrollBottom) return;
+    const canScroll = transcriptFeed.scrollHeight > (transcriptFeed.clientHeight + 8);
+    btnScrollTop.classList.toggle('visible', canScroll);
+    btnScrollBottom.classList.toggle('visible', canScroll);
+  }
+
+  async function loadTranscriptsFromServer() {
+    try {
+      const res = await fetch(`${API}/transcript`);
+      const data = await res.json();
+      const entries = data.entries || [];
+      if (!Array.isArray(entries) || entries.length === 0) {
+        updateScrollButtonsVisibility();
+        return;
+      }
+
+      removePlaceholder();
+      entries.forEach(item => {
+        entryCount++;
+        const isOutgoing = item.channel === 'outgoing';
+        const channelLabel = isOutgoing ? 'OUTGOING' : 'INCOMING';
+
+        const entryEl = document.createElement('div');
+        entryEl.className = `transcript-entry channel-${item.channel}`;
+        entryEl.dataset.id = item.id || entryCount;
+        entryEl.dataset.channel = item.channel;
+        entryEl.dataset.srcTag = item.srcTag || '[AUTO]:';
+        entryEl.dataset.tgtTag = item.tgtTag || '[EN]:';
+        entryEl.dataset.rawSource = item.rawSource || '';
+        entryEl.dataset.rawTranslation = item.rawTranslation || '';
+
+        const timeFormatted = item.time ? (item.time.startsWith('[') ? item.time : `[${item.time}]`) : '';
+
+        entryEl.innerHTML = `
+          <div class="transcript-time">${timeFormatted}</div>
+          <div class="transcript-channel-badge channel-badge-${item.channel}">
+            ${channelLabel}
+          </div>
+          <div class="transcript-source">
+            <span class="label">${item.srcTag || '[AUTO]:'}</span>
+            <span class="source-text"></span>
+          </div>
+          <div class="transcript-translation">
+            <span class="label">${item.tgtTag || '[EN]:'}</span>
+            <span class="translation-text"></span>
+          </div>
+        `;
+        transcriptFeed.appendChild(entryEl);
+        renderEntryText(entryEl);
+      });
+      maybeAutoScroll();
+      updateScrollButtonsVisibility();
+    } catch (e) {
+      console.warn('Failed to load transcripts from server:', e);
+      updateScrollButtonsVisibility();
+    }
   }
 
   // ── Transcript Feed ─────────────────────────────────────────────
@@ -757,8 +863,7 @@
         : new Date().toLocaleTimeString('en-US', { hour12: false });
 
       const isOutgoing = channel === 'outgoing';
-      const channelLabel = isOutgoing ? 'YOU' : 'MEETING';
-      const channelIcon = isOutgoing ? '🎙️' : '🎧';
+      const channelLabel = isOutgoing ? 'OUTGOING' : 'INCOMING';
       const targetLang = isOutgoing
         ? (outgoingLangSelect ? outgoingLangSelect.getValue() || 'en' : 'en').toUpperCase()
         : (incomingLangSelect ? incomingLangSelect.getValue() || 'ru' : 'ru').toUpperCase();
@@ -774,14 +879,14 @@
       state.currentEntryEl.innerHTML = `
         <div class="transcript-time">[${time}]</div>
         <div class="transcript-channel-badge channel-badge-${channel}">
-          ${channelIcon} ${channelLabel}
+          ${channelLabel}
         </div>
         <div class="transcript-source">
           <span class="label">[AUTO]:</span>
           <span class="source-text"></span>
         </div>
         <div class="transcript-translation">
-          <span class="label"><span class="speaker-icon">🔊</span> [${targetLang}]:</span>
+          <span class="label">[${targetLang}]:</span>
           <span class="translation-text"></span><span class="typing-cursor"></span>
         </div>
       `;
@@ -824,6 +929,8 @@
     }
 
     maybeAutoScroll();
+    saveTranscriptsToServer();
+    updateScrollButtonsVisibility();
   }
 
   function appendOutputTranscript(text, timestamp, channel) {
@@ -844,6 +951,8 @@
     }
 
     maybeAutoScroll();
+    saveTranscriptsToServer();
+    updateScrollButtonsVisibility();
 
     if (text.trimEnd().match(/[.?!]$/)) {
       finalizeEntry(channel);
@@ -858,6 +967,8 @@
       state.currentEntryEl = null;
       state.currentText = '';
       state.currentOutputText = '';
+      saveTranscriptsToServer();
+      updateScrollButtonsVisibility();
     }
   }
 
@@ -877,6 +988,7 @@
     channelState.outgoing = { currentText: '', currentOutputText: '', currentEntryEl: null };
     channelState.incoming = { currentText: '', currentOutputText: '', currentEntryEl: null };
     entryCount = 0;
+    updateScrollButtonsVisibility();
   }
 
   function maybeAutoScroll() {
@@ -895,6 +1007,7 @@
     `;
     transcriptFeed.appendChild(errDiv);
     maybeAutoScroll();
+    updateScrollButtonsVisibility();
   }
 
   // ── Search & Highlight Engine ─────────────────────────────────
@@ -920,6 +1033,7 @@
       // Update highlight mark tags
       renderEntryText(entry);
     });
+    updateScrollButtonsVisibility();
   }
 
   // ── Export ─────────────────────────────────────────────────────
@@ -939,8 +1053,12 @@
 
       let content = 'LiveSpeech Translator Transcript\n' + '═'.repeat(50) + '\n';
       content += `Mode: ${currentMode}\n`;
-      content += `Outgoing Language: ${getLanguageDisplayName(outgoingLangSelect ? outgoingLangSelect.getValue() : 'en')}\n`;
-      content += `Incoming Language: ${getLanguageDisplayName(incomingLangSelect ? incomingLangSelect.getValue() : 'ru')}\n`;
+      if (currentMode !== 'incoming') {
+        content += `Outgoing Language: ${getLanguageDisplayName(outgoingLangSelect ? outgoingLangSelect.getValue() : 'en')}\n`;
+      }
+      if (currentMode !== 'outgoing') {
+        content += `Incoming Language: ${getLanguageDisplayName(incomingLangSelect ? incomingLangSelect.getValue() : 'ru')}\n`;
+      }
       content += `Export Date: ${formattedDate} ${formattedTime}\n`;
       content += '═'.repeat(50) + '\n\n';
 
@@ -952,19 +1070,17 @@
 
         const rawSrc = (entry.dataset.rawSource || '').trim();
         const rawTrans = (entry.dataset.rawTranslation || '').trim();
-        const channel = entry.dataset.channel || 'outgoing';
 
         if (!rawSrc && !rawTrans) return;
 
         const time = timeEl ? timeEl.textContent.trim() : '';
-        const speakerTag = channel === 'incoming' ? '[MEETING' : '[YOU';
         const srcTag = entry.dataset.srcTag || '[AUTO]:';
         const tgtTag = entry.dataset.tgtTag || '[EN]:';
 
         count++;
         if (time) content += `${time}\n`;
-        if (rawSrc) content += `${speakerTag} → ${tgtTag.replace(':', '').replace('[', '').replace(']', '')}] ${srcTag} ${rawSrc}\n`;
-        if (rawTrans) content += `${speakerTag} → ${tgtTag.replace(':', '').replace('[', '').replace(']', '')}] ${tgtTag} ${rawTrans}\n`;
+        if (rawSrc) content += `${srcTag} ${rawSrc}\n`;
+        if (rawTrans) content += `${tgtTag} ${rawTrans}\n`;
         content += '\n';
       });
 
@@ -1224,6 +1340,40 @@
     });
 
     btnExportTxt.addEventListener('click', exportTxt);
+
+    // Transcript Maximize / Restore
+    if (btnMaximizeTranscript) {
+      btnMaximizeTranscript.addEventListener('click', () => {
+        const isMaximized = mainContent.classList.toggle('transcript-maximized');
+        transcriptSection.classList.toggle('maximized', isMaximized);
+        btnMaximizeTranscript.textContent = isMaximized ? '🗗' : '🗖';
+        btnMaximizeTranscript.title = isMaximized ? 'Restore normal view' : 'Maximize transcript view';
+        setTimeout(updateScrollButtonsVisibility, 50);
+      });
+    }
+
+    // Scroll Controls (Top / Bottom)
+    if (btnScrollTop) {
+      btnScrollTop.addEventListener('click', () => {
+        transcriptFeed.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+    if (btnScrollBottom) {
+      btnScrollBottom.addEventListener('click', () => {
+        transcriptFeed.scrollTo({ top: transcriptFeed.scrollHeight, behavior: 'smooth' });
+        if (autoScroll) autoScroll.checked = true;
+      });
+    }
+
+    transcriptFeed.addEventListener('scroll', updateScrollButtonsVisibility);
+    window.addEventListener('resize', updateScrollButtonsVisibility);
+
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(() => {
+        updateScrollButtonsVisibility();
+      });
+      ro.observe(transcriptFeed);
+    }
 
     searchInput.addEventListener('input', () => {
       filterTranscripts(searchInput.value);

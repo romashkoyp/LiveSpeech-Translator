@@ -4,6 +4,7 @@
 .env
 gemini_docs.md
 config.json
+transcripts.json
 __pycache__/
 *.pyc
 build/
