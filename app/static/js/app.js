@@ -1052,13 +1052,7 @@
       const formattedTime = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 
       let content = 'LiveSpeech Translator Transcript\n' + '═'.repeat(50) + '\n';
-      content += `Mode: ${currentMode}\n`;
-      if (currentMode !== 'incoming') {
-        content += `Outgoing Language: ${getLanguageDisplayName(outgoingLangSelect ? outgoingLangSelect.getValue() : 'en')}\n`;
-      }
-      if (currentMode !== 'outgoing') {
-        content += `Incoming Language: ${getLanguageDisplayName(incomingLangSelect ? incomingLangSelect.getValue() : 'ru')}\n`;
-      }
+      content += `Mode:        ${currentMode}\n`;
       content += `Export Date: ${formattedDate} ${formattedTime}\n`;
       content += '═'.repeat(50) + '\n\n';
 
@@ -1070,17 +1064,39 @@
 
         const rawSrc = (entry.dataset.rawSource || '').trim();
         const rawTrans = (entry.dataset.rawTranslation || '').trim();
+        const channel = entry.dataset.channel || 'outgoing';
 
         if (!rawSrc && !rawTrans) return;
 
         const time = timeEl ? timeEl.textContent.trim() : '';
-        const srcTag = entry.dataset.srcTag || '[AUTO]:';
-        const tgtTag = entry.dataset.tgtTag || '[EN]:';
+
+        const cleanLang = (tag, fallback) => {
+          if (!tag) return fallback;
+          const m = tag.match(/\[([A-Za-z0-9_-]+)\]/);
+          return m ? m[1].toUpperCase() : fallback;
+        };
+
+        const srcLang = cleanLang(entry.dataset.srcTag, 'AUTO');
+        const fallbackTgt = channel === 'outgoing'
+          ? (outgoingLangSelect ? outgoingLangSelect.getValue() || 'en' : 'en').toUpperCase()
+          : (incomingLangSelect ? incomingLangSelect.getValue() || 'ru' : 'ru').toUpperCase();
+        const tgtLang = cleanLang(entry.dataset.tgtTag, fallbackTgt);
+
+        let srcPrefix = '';
+        let tgtPrefix = '';
+
+        if (channel === 'outgoing') {
+          srcPrefix = `[YOU SPEAK → ${srcLang}]:`;
+          tgtPrefix = `[THEY HEAR → ${tgtLang}]:`;
+        } else {
+          srcPrefix = `[THEY SPEAK → ${srcLang}]:`;
+          tgtPrefix = `[YOU HEAR   → ${tgtLang}]:`;
+        }
 
         count++;
         if (time) content += `${time}\n`;
-        if (rawSrc) content += `${srcTag} ${rawSrc}\n`;
-        if (rawTrans) content += `${tgtTag} ${rawTrans}\n`;
+        if (rawSrc) content += `${srcPrefix} ${rawSrc}\n`;
+        if (rawTrans) content += `${tgtPrefix} ${rawTrans}\n`;
         content += '\n';
       });
 

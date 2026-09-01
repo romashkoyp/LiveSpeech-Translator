@@ -30,6 +30,7 @@ Supports **Bidirectional (Two-Way) Live Meeting Translation** using a 100% free 
 ## 🗺️ Dual Virtual Cable Meeting Topology
 
 For bidirectional meeting translation, LiveSpeech Translator uses two free Windows audio drivers from VB-Audio:
+
 1. **VB-CABLE** ➔ `CABLE Input` / `CABLE Output` (Outgoing feed)
 2. **Hi-Fi CABLE** ➔ `HiFi Cable Input` / `HiFi Cable Output` (Incoming feed)
 
@@ -81,9 +82,11 @@ For bidirectional meeting translation, LiveSpeech Translator uses two free Windo
 ## 🚀 Quick Start (Windows 10 / 11)
 
 ### Option 1: Run the Standalone Executable (.exe)
+
 Double-click [`dist\LiveSpeech-Translator.exe`](dist/LiveSpeech-Translator.exe) to start the app immediately.
 
 ### Option 2: Run from Python Source
+
 ```bash
 # Install dependencies
 pip install fastapi uvicorn pywebview google-genai pyaudio numpy pydantic langdetect pyinstaller
@@ -93,10 +96,13 @@ python main.py
 ```
 
 ### Option 3: Build Executable from Source
+
 Double-click [`build_exe.bat`](build_exe.bat) or run:
+
 ```bash
 python -m PyInstaller --clean livespeech-translator.spec
 ```
+
 The compiled binary will be placed in `dist\LiveSpeech-Translator.exe`.
 
 ---
@@ -114,12 +120,14 @@ The compiled binary will be placed in `dist\LiveSpeech-Translator.exe`.
 ## 🎧 Audio Routing Setup Guide
 
 ### 1. Free Virtual Audio Drivers Installation
+
 - **VB-CABLE Driver** (Standard): [vb-audio.com/Cable](https://vb-audio.com/Cable/index.htm)
 - **Hi-Fi CABLE Driver**: [vb-audio.com/Cable/index.htm#DownloadHiFiCable](https://vb-audio.com/Cable/index.htm#DownloadASIOBridge)
 
 *(Restart your PC after installing the audio drivers).*
 
 ### 2. Configure LiveSpeech Translator
+
 1. Select **`⚡ Bidirectional (Meeting Mode)`** on the mode bar.
 2. In **Outgoing Translation (You ➔ Meeting)**:
    - **Input**: Your physical Microphone.
@@ -132,10 +140,12 @@ The compiled binary will be placed in `dist\LiveSpeech-Translator.exe`.
    - Click **`🔊 Test`** to confirm test audio plays in your headphones.
 
 ### 3. Configure Zoom / Teams / Google Meet
+
 - **Microphone**: Select `CABLE Output (VB-Audio Virtual Cable)`.
 - **Speaker**: Select `HiFi Cable Input (VB-Audio Hi-Fi Cable)`.
 
 ### 4. Start Live Translation
+
 - Click **`▶ START STREAMING`** (or press `Space`).
 - Speak into your mic: your speech will be translated and streamed to the meeting app.
 - Remote attendees speak: their audio will be translated and played through your headphones.
@@ -160,22 +170,52 @@ The compiled binary will be placed in `dist\LiveSpeech-Translator.exe`.
 
 ## 📄 Export Format Example
 
+for bidirectional mode txt export example:
+
 ```text
 LiveSpeech Translator Transcript
 ══════════════════════════════════════════════════
-Mode: bidirectional
-Outgoing Language: English
-Incoming Language: Finnish
+Mode:        bidirectional
 Export Date: 18.08.2026 12:30:00
 ══════════════════════════════════════════════════
 
 [12:30:05]
-[YOU → EN] [FI]: Hei kaikki, mukava liittyä kokoukseen!
-[YOU → EN] [EN]: Hello everyone, glad to join the meeting!
+[YOU SPEAK → EN]: Hello everyone, glad to join the meeting!
+[THEY HEAR → FI]: Hei kaikki, mukava liittyä kokoukseen!
+
 
 [12:30:14]
-[MEETING → FI] [EN]: Welcome! We were just discussing the project timeline.
-[MEETING → FI] [FI]: Tervetuloa! Keskustelimme juuri projektin aikataulusta.
+[THEY SPEAK → FI]: Tervetuloa! Keskustelimme juuri projektin aikataulusta.
+[YOU HEAR   → EN]: Welcome! We were just discussing the project timeline.
+
+```
+
+For incoming mode:
+
+```text
+LiveSpeech Translator Transcript
+══════════════════════════════════════════════════
+Mode: incoming
+Export Date: 18.08.2026 12:30:00
+══════════════════════════════════════════════════
+
+[12:30:14]
+[THEY SPEAK → EN]: Welcome! We were just discussing the project timeline.
+[YOU HEAR   → FI]: Tervetuloa! Keskustelimme juuri projektin aikataulusta.
+```
+
+For outgoing mode:
+
+```text
+LiveSpeech Translator Transcript
+══════════════════════════════════════════════════
+Mode: outgoing
+Export Date: 18.08.2026 12:30:00
+══════════════════════════════════════════════════
+
+[12:30:14]
+[YOU SPEAK → EN]: Welcome! We were just discussing the project timeline.
+[THEY HEAR → FI]: Tervetuloa! Keskustelimme juuri projektin aikataulusta.
 ```
 
 ---
