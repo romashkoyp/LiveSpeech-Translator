@@ -256,9 +256,32 @@ class AudioManager:
 
     # ── Device Discovery ─────────────────────────────────────────────
 
+    def _find_full_device_name(self, raw_name: str, all_devices: list[dict]) -> str:
+        """
+        Windows MME API truncates device names at 31 characters (MAXPNAMELEN).
+        Restore the full untruncated name from DirectSound/WASAPI if available.
+        """
+        clean_name = raw_name.strip()
+        candidates = [
+            d["raw_name"].strip()
+            for d in all_devices
+            if d.get("host_api") in ("Windows DirectSound", "Windows WASAPI")
+            and "primary sound" not in d["raw_name"].lower()
+            and "sound mapper" not in d["raw_name"].lower()
+        ]
+        for cand in candidates:
+            if cand == clean_name:
+                return cand
+        for cand in candidates:
+            if cand.startswith(clean_name):
+                return cand
+            if len(clean_name) >= 18 and cand.startswith(clean_name[:18]):
+                return cand
+        return clean_name
+
     def list_input_devices(self) -> list[dict]:
-        """Return all available audio input devices."""
-        devices = []
+        """Return all available audio input devices (filtered to MME on Windows, with full names and sorted A-Z)."""
+        all_devices = []
         for i in range(self._pa.get_device_count()):
             info = self._pa.get_device_info_by_index(i)
             if info.get("maxInputChannels", 0) > 0:
@@ -268,20 +291,34 @@ class AudioManager:
                 except Exception:
                     api_name = ""
                 raw_name = _fix_encoding(info.get("name", f"Device {i}")).strip()
-                api_tag = f" [{api_name}]" if api_name else ""
-                devices.append({
+                all_devices.append({
                     "index": i,
-                    "name": f"{raw_name}{api_tag}",
+                    "name": raw_name,
                     "raw_name": raw_name,
                     "host_api": api_name,
                     "channels": info["maxInputChannels"],
                     "default_rate": int(info.get("defaultSampleRate", 16000)),
                 })
+
+        # Filter to MME devices, excluding Microsoft Sound Mapper virtual aliases
+        mme_devices = [
+            d for d in all_devices
+            if d.get("host_api") == "MME" and "sound mapper" not in d["name"].lower()
+        ]
+
+        if mme_devices:
+            for d in mme_devices:
+                d["name"] = self._find_full_device_name(d["raw_name"], all_devices)
+            devices = mme_devices
+        else:
+            devices = [d for d in all_devices if "sound mapper" not in d["name"].lower()] or all_devices
+
+        devices.sort(key=lambda d: d["name"].lower())
         return devices
 
     def list_output_devices(self) -> list[dict]:
-        """Return all available audio output devices."""
-        devices = []
+        """Return all available audio output devices (filtered to MME on Windows, with full names and sorted A-Z)."""
+        all_devices = []
         for i in range(self._pa.get_device_count()):
             info = self._pa.get_device_info_by_index(i)
             if info.get("maxOutputChannels", 0) > 0:
@@ -291,15 +328,29 @@ class AudioManager:
                 except Exception:
                     api_name = ""
                 raw_name = _fix_encoding(info.get("name", f"Device {i}")).strip()
-                api_tag = f" [{api_name}]" if api_name else ""
-                devices.append({
+                all_devices.append({
                     "index": i,
-                    "name": f"{raw_name}{api_tag}",
+                    "name": raw_name,
                     "raw_name": raw_name,
                     "host_api": api_name,
                     "channels": info["maxOutputChannels"],
                     "default_rate": int(info.get("defaultSampleRate", 24000)),
                 })
+
+        # Filter to MME devices, excluding Microsoft Sound Mapper virtual aliases
+        mme_devices = [
+            d for d in all_devices
+            if d.get("host_api") == "MME" and "sound mapper" not in d["name"].lower()
+        ]
+
+        if mme_devices:
+            for d in mme_devices:
+                d["name"] = self._find_full_device_name(d["raw_name"], all_devices)
+            devices = mme_devices
+        else:
+            devices = [d for d in all_devices if "sound mapper" not in d["name"].lower()] or all_devices
+
+        devices.sort(key=lambda d: d["name"].lower())
         return devices
 
     def get_default_input_index(self) -> int | None:
@@ -315,6 +366,133 @@ class AudioManager:
             return int(self._pa.get_default_output_device_info()["index"])
         except Exception:
             return None
+
+    def find_device_by_name(self, devices: list[dict], target_name: str | None) -> int | None:
+        """Find a device index by exact, case-insensitive, or substring name match."""
+        if not target_name or not devices:
+            return None
+        target_clean = target_name.strip()
+        target_lower = target_clean.lower()
+
+        # 1. Exact match
+        for d in devices:
+            if d.get("name") == target_clean or d.get("raw_name") == target_clean:
+                return d["index"]
+
+        # 2. Case-insensitive exact match
+        for d in devices:
+            if d.get("name", "").lower() == target_lower or d.get("raw_name", "").lower() == target_lower:
+                return d["index"]
+
+        # 3. Substring match
+        for d in devices:
+            d_name = d.get("name", "").lower()
+            d_raw = d.get("raw_name", "").lower()
+            if target_lower in d_name or d_name in target_lower or target_lower in d_raw or d_raw in target_lower:
+                return d["index"]
+
+        return None
+
+    def get_suggested_devices(self) -> dict[str, int | None]:
+        """
+        Auto-detect optimal device assignments for first launch:
+        - outgoing_input: Physical microphone (explicitly excluding Stereo Mixer and Cables)
+        - outgoing_output: Virtual Cable Input (CABLE Input / VB-Audio)
+        - incoming_input: Hi-Fi Cable Output (or secondary virtual cable)
+        - incoming_output: Physical headphones/speakers (excluding Stereo Mixer and Cables)
+        """
+        inputs = self.list_input_devices()
+        outputs = self.list_output_devices()
+        def_in = self.get_default_input_index()
+        def_out = self.get_default_output_index()
+
+        def is_stereo_mixer(name: str) -> bool:
+            nl = (name or "").lower()
+            return "стерео микшер" in nl or "stereo mix" in nl or "stereo mixer" in nl
+
+        def is_cable(name: str) -> bool:
+            nl = (name or "").lower()
+            return "cable" in nl or "vb-audio" in nl
+
+        # 1. Outgoing Input (Microphone)
+        out_in_idx = None
+        in_indices = {d["index"]: d["name"] for d in inputs}
+
+        # If Windows default input is an actual mic (not cable, not stereo mixer)
+        if def_in in in_indices and not is_cable(in_indices[def_in]) and not is_stereo_mixer(in_indices[def_in]):
+            out_in_idx = def_in
+        else:
+            # Look for devices with mic/микрофон/array/headset in name
+            for d in inputs:
+                nl = d["name"].lower()
+                if any(w in nl for w in ("mic", "микрофон", "array", "headset", "headphone")) and not is_cable(d["name"]) and not is_stereo_mixer(d["name"]):
+                    out_in_idx = d["index"]
+                    break
+            # Fallback to any input that is NOT a cable and NOT stereo mixer
+            if out_in_idx is None:
+                for d in inputs:
+                    if not is_cable(d["name"]) and not is_stereo_mixer(d["name"]):
+                        out_in_idx = d["index"]
+                        break
+            # Last resort
+            if out_in_idx is None and inputs:
+                out_in_idx = inputs[0]["index"]
+
+        # 2. Outgoing Output (Virtual Cable Input)
+        out_out_idx = None
+        for d in outputs:
+            name_lower = d["name"].lower()
+            if ("cable input" in name_lower or "virtual cable" in name_lower) and "hi-fi" not in name_lower and "hifi" not in name_lower:
+                out_out_idx = d["index"]
+                break
+        if out_out_idx is None:
+            for d in outputs:
+                if "cable" in d["name"].lower() and "hi-fi" not in d["name"].lower() and "hifi" not in d["name"].lower():
+                    out_out_idx = d["index"]
+                    break
+        if out_out_idx is None and outputs:
+            out_out_idx = outputs[0]["index"]
+
+        # 3. Incoming Input (Hi-Fi Cable Output)
+        inc_in_idx = None
+        for d in inputs:
+            name_lower = d["name"].lower()
+            if ("hi-fi" in name_lower or "hifi" in name_lower) and "cable" in name_lower:
+                inc_in_idx = d["index"]
+                break
+        if inc_in_idx is None:
+            for d in inputs:
+                if is_cable(d["name"]) and d["index"] != out_in_idx:
+                    inc_in_idx = d["index"]
+                    break
+        if inc_in_idx is None and inputs:
+            inc_in_idx = inputs[0]["index"]
+
+        # 4. Incoming Output (Headphones / Speakers)
+        inc_out_idx = None
+        out_indices = {d["index"]: d["name"] for d in outputs}
+        if def_out in out_indices and not is_cable(out_indices[def_out]) and not is_stereo_mixer(out_indices[def_out]):
+            inc_out_idx = def_out
+        else:
+            for d in outputs:
+                name_lower = d["name"].lower()
+                if any(w in name_lower for w in ("speaker", "headphone", "headset", "динамик", "наушник", "realtek")) and not is_cable(d["name"]) and not is_stereo_mixer(d["name"]):
+                    inc_out_idx = d["index"]
+                    break
+            if inc_out_idx is None:
+                for d in outputs:
+                    if not is_cable(d["name"]) and not is_stereo_mixer(d["name"]):
+                        inc_out_idx = d["index"]
+                        break
+            if inc_out_idx is None and outputs:
+                inc_out_idx = outputs[0]["index"]
+
+        return {
+            "outgoing_input": out_in_idx,
+            "outgoing_output": out_out_idx,
+            "incoming_input": inc_in_idx,
+            "incoming_output": inc_out_idx,
+        }
 
     # ── Test Tone ────────────────────────────────────────────────────
 

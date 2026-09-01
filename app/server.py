@@ -202,6 +202,8 @@ class ChannelConfigUpdate(BaseModel):
     enabled: Optional[bool] = None
     input_device_index: Optional[int] = None
     output_device_index: Optional[int] = None
+    input_device_name: Optional[str] = None
+    output_device_name: Optional[str] = None
     target_language: Optional[str] = None
 
 class ConfigUpdate(BaseModel):
@@ -214,6 +216,8 @@ class ConfigUpdate(BaseModel):
     target_language: Optional[str] = None
     input_device_index: Optional[int] = None
     output_device_index: Optional[int] = None
+    input_device_name: Optional[str] = None
+    output_device_name: Optional[str] = None
 
 
 class TestAudioRequest(BaseModel):
@@ -253,12 +257,13 @@ async def index():
 
 @app.get("/api/devices")
 async def get_devices():
-    """Return available audio input and output devices."""
+    """Return available audio input and output devices with optimal defaults."""
     return {
         "inputs": audio_mgr.list_input_devices(),
         "outputs": audio_mgr.list_output_devices(),
         "default_input": audio_mgr.get_default_input_index(),
         "default_output": audio_mgr.get_default_output_index(),
+        "suggested": audio_mgr.get_suggested_devices(),
     }
 
 
@@ -320,6 +325,10 @@ async def update_config(update: ConfigUpdate):
         config["outgoing"]["input_device_index"] = update.input_device_index
     if update.output_device_index is not None:
         config["outgoing"]["output_device_index"] = update.output_device_index
+    if update.input_device_name is not None:
+        config["outgoing"]["input_device_name"] = update.input_device_name
+    if update.output_device_name is not None:
+        config["outgoing"]["output_device_name"] = update.output_device_name
 
     save_config(config)
     return {"status": "ok", "config": config}
@@ -404,13 +413,29 @@ def _start_channel(config: dict, channel: str, api_key: str):
     rate_out = config.get("rate_out", 24000)
     chunk_size = config.get("chunk_size", 1600)
 
-    input_idx = ch_config.get("input_device_index")
-    if input_idx is None:
-        input_idx = audio_mgr.get_default_input_index()
+    suggested = audio_mgr.get_suggested_devices()
+    input_devs = audio_mgr.list_input_devices()
+    output_devs = audio_mgr.list_output_devices()
 
-    output_idx = ch_config.get("output_device_index")
+    # Resolve input device: try matching saved device name first, then saved index, then suggested
+    input_idx = None
+    if ch_config.get("input_device_name"):
+        input_idx = audio_mgr.find_device_by_name(input_devs, ch_config["input_device_name"])
+    if input_idx is None and ch_config.get("input_device_index") is not None:
+        if any(d["index"] == ch_config["input_device_index"] for d in input_devs):
+            input_idx = ch_config["input_device_index"]
+    if input_idx is None:
+        input_idx = suggested.get(f"{channel}_input") or audio_mgr.get_default_input_index()
+
+    # Resolve output device: try matching saved device name first, then saved index, then suggested
+    output_idx = None
+    if ch_config.get("output_device_name"):
+        output_idx = audio_mgr.find_device_by_name(output_devs, ch_config["output_device_name"])
+    if output_idx is None and ch_config.get("output_device_index") is not None:
+        if any(d["index"] == ch_config["output_device_index"] for d in output_devs):
+            output_idx = ch_config["output_device_index"]
     if output_idx is None:
-        output_idx = audio_mgr.get_default_output_index()
+        output_idx = suggested.get(f"{channel}_output") or audio_mgr.get_default_output_index()
 
     if input_idx is None or output_idx is None:
         return None

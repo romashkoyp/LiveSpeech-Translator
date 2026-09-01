@@ -106,6 +106,8 @@ CHANNEL_DEFAULTS = {
     "enabled": True,
     "input_device_index": None,
     "output_device_index": None,
+    "input_device_name": None,
+    "output_device_name": None,
     "target_language": "en",
 }
 
@@ -185,6 +187,10 @@ def load_config() -> dict:
             config[ch]["input_device_index"] = None
         if not isinstance(config[ch].get("output_device_index"), int):
             config[ch]["output_device_index"] = None
+        if not isinstance(config[ch].get("input_device_name"), str):
+            config[ch]["input_device_name"] = None
+        if not isinstance(config[ch].get("output_device_name"), str):
+            config[ch]["output_device_name"] = None
 
     return config
 

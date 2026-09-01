@@ -84,6 +84,7 @@
   let timerInterval = null;
   let languagesList = [];
   let currentMode = 'bidirectional';
+  let suggestedDevices = {};
 
   // Searchable language combobox instances
   let outgoingLangSelect = null;
@@ -445,15 +446,22 @@
     try {
       const res = await fetch(`${API}/devices`);
       const data = await res.json();
+      suggestedDevices = data.suggested || {};
+
+      const sortedInputs = [...(data.inputs || [])].sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true })
+      );
+      const sortedOutputs = [...(data.outputs || [])].sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true })
+      );
 
       // Populate all input selectors
       [outgoingInputDevice, incomingInputDevice].forEach(sel => {
         sel.innerHTML = '';
-        data.inputs.forEach(d => {
+        sortedInputs.forEach(d => {
           const opt = document.createElement('option');
           opt.value = d.index;
           opt.textContent = d.name;
-          if (d.index === data.default_input) opt.selected = true;
           sel.appendChild(opt);
         });
       });
@@ -461,11 +469,10 @@
       // Populate all output selectors
       [outgoingOutputDevice, incomingOutputDevice].forEach(sel => {
         sel.innerHTML = '';
-        data.outputs.forEach(d => {
+        sortedOutputs.forEach(d => {
           const opt = document.createElement('option');
           opt.value = d.index;
           opt.textContent = d.name;
-          if (d.index === data.default_output) opt.selected = true;
           sel.appendChild(opt);
         });
       });
@@ -491,6 +498,74 @@
     }
   }
 
+  function selectDeviceBySavedConfig(selectEl, savedIndex, savedName, suggestedIndex, isMic = false) {
+    if (!selectEl || selectEl.options.length === 0) return;
+
+    const isStereoMix = (str) => {
+      const s = (str || '').toLowerCase();
+      return s.includes('стерео микшер') || s.includes('stereo mix') || s.includes('stereo mixer');
+    };
+
+    const isCable = (str) => {
+      const s = (str || '').toLowerCase();
+      return s.includes('cable') || s.includes('vb-audio');
+    };
+
+    // 1. Try to match by device name (resilient to USB plug/unplug index shifts)
+    if (savedName && typeof savedName === 'string' && savedName.trim()) {
+      const savedLower = savedName.trim().toLowerCase();
+      for (let i = 0; i < selectEl.options.length; i++) {
+        if (selectEl.options[i].textContent.trim().toLowerCase() === savedLower) {
+          selectEl.selectedIndex = i;
+          return;
+        }
+      }
+      for (let i = 0; i < selectEl.options.length; i++) {
+        const optLower = selectEl.options[i].textContent.trim().toLowerCase();
+        if (optLower.includes(savedLower) || savedLower.includes(optLower)) {
+          selectEl.selectedIndex = i;
+          return;
+        }
+      }
+      // If savedName was set but not found, device is currently unplugged.
+      // Do NOT fall back to savedIndex, proceed directly to suggestedIndex.
+    } else if (savedIndex != null) {
+      // 2. Legacy fallback only if savedName was not set
+      for (let i = 0; i < selectEl.options.length; i++) {
+        if (parseInt(selectEl.options[i].value) === savedIndex) {
+          const optText = selectEl.options[i].textContent;
+          if (isMic && (isStereoMix(optText) || isCable(optText))) {
+            break; // Skip to suggestedIndex for microphone
+          }
+          selectEl.selectedIndex = i;
+          return;
+        }
+      }
+    }
+
+    // 3. Fallback to smart suggested index
+    if (suggestedIndex != null) {
+      for (let i = 0; i < selectEl.options.length; i++) {
+        if (parseInt(selectEl.options[i].value) === suggestedIndex) {
+          selectEl.selectedIndex = i;
+          return;
+        }
+      }
+    }
+
+    // 4. Default to first valid option
+    if (isMic) {
+      for (let i = 0; i < selectEl.options.length; i++) {
+        const optText = selectEl.options[i].textContent;
+        if (!isStereoMix(optText) && !isCable(optText)) {
+          selectEl.selectedIndex = i;
+          return;
+        }
+      }
+    }
+    selectEl.selectedIndex = 0;
+  }
+
   async function loadConfig() {
     try {
       const res = await fetch(`${API}/config`);
@@ -505,15 +580,49 @@
 
       // Outgoing channel
       const out = config.outgoing || {};
-      if (out.input_device_index != null) outgoingInputDevice.value = out.input_device_index;
-      if (out.output_device_index != null) outgoingOutputDevice.value = out.output_device_index;
+      selectDeviceBySavedConfig(outgoingInputDevice, out.input_device_index, out.input_device_name, suggestedDevices.outgoing_input, true);
+      selectDeviceBySavedConfig(outgoingOutputDevice, out.output_device_index, out.output_device_name, suggestedDevices.outgoing_output, false);
       if (out.target_language && outgoingLangSelect) outgoingLangSelect.setValue(out.target_language);
 
       // Incoming channel
       const inc = config.incoming || {};
-      if (inc.input_device_index != null) incomingInputDevice.value = inc.input_device_index;
-      if (inc.output_device_index != null) incomingOutputDevice.value = inc.output_device_index;
+      selectDeviceBySavedConfig(incomingInputDevice, inc.input_device_index, inc.input_device_name, suggestedDevices.incoming_input, false);
+      selectDeviceBySavedConfig(incomingOutputDevice, inc.output_device_index, inc.output_device_name, suggestedDevices.incoming_output, false);
       if (inc.target_language && incomingLangSelect) incomingLangSelect.setValue(inc.target_language);
+
+      // Only if config was completely uninitialized (first run without any device config), save initial choices
+      if (!out.input_device_name && !out.output_device_name && !inc.input_device_name && !inc.output_device_name) {
+        const outInOpt = outgoingInputDevice.options[outgoingInputDevice.selectedIndex];
+        const outOutOpt = outgoingOutputDevice.options[outgoingOutputDevice.selectedIndex];
+        const incInOpt = incomingInputDevice.options[incomingInputDevice.selectedIndex];
+        const incOutOpt = incomingOutputDevice.options[incomingOutputDevice.selectedIndex];
+
+        const outInVal = outInOpt ? parseInt(outInOpt.value) : null;
+        const outOutVal = outOutOpt ? parseInt(outOutOpt.value) : null;
+        const incInVal = incInOpt ? parseInt(incInOpt.value) : null;
+        const incOutVal = incOutOpt ? parseInt(incOutOpt.value) : null;
+
+        if (!isNaN(outInVal) && !isNaN(outOutVal) && !isNaN(incInVal) && !isNaN(incOutVal)) {
+          fetch(`${API}/config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              outgoing: {
+                input_device_index: outInVal,
+                input_device_name: outInOpt ? outInOpt.textContent.trim() : '',
+                output_device_index: outOutVal,
+                output_device_name: outOutOpt ? outOutOpt.textContent.trim() : ''
+              },
+              incoming: {
+                input_device_index: incInVal,
+                input_device_name: incInOpt ? incInOpt.textContent.trim() : '',
+                output_device_index: incOutVal,
+                output_device_name: incOutOpt ? incOutOpt.textContent.trim() : ''
+              }
+            })
+          }).catch(e => console.warn('Could not sync initial device selections to config:', e));
+        }
+      }
 
       // API key status
       if (config.has_api_key) {
@@ -1275,33 +1384,57 @@
 
     // Outgoing device changes
     outgoingInputDevice.addEventListener('change', async () => {
+      const opt = outgoingInputDevice.options[outgoingInputDevice.selectedIndex];
       await fetch(`${API}/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ outgoing: { input_device_index: parseInt(outgoingInputDevice.value) } }),
+        body: JSON.stringify({
+          outgoing: {
+            input_device_index: parseInt(outgoingInputDevice.value),
+            input_device_name: opt ? opt.textContent : ''
+          }
+        }),
       });
     });
     outgoingOutputDevice.addEventListener('change', async () => {
+      const opt = outgoingOutputDevice.options[outgoingOutputDevice.selectedIndex];
       await fetch(`${API}/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ outgoing: { output_device_index: parseInt(outgoingOutputDevice.value) } }),
+        body: JSON.stringify({
+          outgoing: {
+            output_device_index: parseInt(outgoingOutputDevice.value),
+            output_device_name: opt ? opt.textContent : ''
+          }
+        }),
       });
     });
 
     // Incoming device changes
     incomingInputDevice.addEventListener('change', async () => {
+      const opt = incomingInputDevice.options[incomingInputDevice.selectedIndex];
       await fetch(`${API}/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ incoming: { input_device_index: parseInt(incomingInputDevice.value) } }),
+        body: JSON.stringify({
+          incoming: {
+            input_device_index: parseInt(incomingInputDevice.value),
+            input_device_name: opt ? opt.textContent : ''
+          }
+        }),
       });
     });
     incomingOutputDevice.addEventListener('change', async () => {
+      const opt = incomingOutputDevice.options[incomingOutputDevice.selectedIndex];
       await fetch(`${API}/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ incoming: { output_device_index: parseInt(incomingOutputDevice.value) } }),
+        body: JSON.stringify({
+          incoming: {
+            output_device_index: parseInt(incomingOutputDevice.value),
+            output_device_name: opt ? opt.textContent : ''
+          }
+        }),
       });
     });
 
@@ -1352,7 +1485,12 @@
     btnResetKey.addEventListener('click', resetApiKey);
 
     btnClear.addEventListener('click', async () => {
-      await fetch(`${API}/transcript/clear`, { method: 'POST' });
+      const hasEntries = transcriptFeed.querySelector('.transcript-entry:not([data-channel="system"])');
+      if (!hasEntries) return;
+
+      if (confirm('Are you sure you want to clear all transcripts?')) {
+        await fetch(`${API}/transcript/clear`, { method: 'POST' });
+      }
     });
 
     btnExportTxt.addEventListener('click', exportTxt);
