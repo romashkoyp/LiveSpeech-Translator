@@ -1,0 +1,25 @@
+@startuml
+!$ICONURL = "https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons"
+!include $ICONURL/common.puml
+!include $ICONURL/font-awesome-6/volume_high.puml
+!include $ICONURL/material/record_voice_over.puml
+skinparam {
+  ComponentStyle rectangle
+  DefaultTextAlignment center
+  backgroundColor White
+}
+left to right direction
+component "Meeting App/\nBrowser/\nMedia Player" as M #LightBlue{
+  interface out as MOut #Black
+  interface in as MIn #Black
+}
+component "LiveSpeech" as App #LightGreen {
+  interface in as AppIn #Black
+  interface out as AppOut #Black
+}
+FA6_VOLUME_HIGH(d1, "Your speaker")
+MATERIAL_RECORD_VOICE_OVER(d2, "Incoming audio")
+d2 --> MIn : original audio
+MOut --> AppIn : VB-Audio\nHi-Fi Cable
+AppOut --> d1 : translated audio
+@enduml

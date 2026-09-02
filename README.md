@@ -9,19 +9,20 @@ Translate meetings, voice calls, presentations, and streams in real time with ze
 ## 🌟 Key Features
 
 - ⚡ **3 Translation Modes**:
-  - `⚡ Bidirectional (Meeting Mode)` — Full two-way live translation for meetings (Zoom, Teams, Meet, Discord).
-  - `🎙️ Outgoing Only` — Translates your voice only (for presentations, webinars, or outgoing voice calls).
   - `🎧 Incoming Only` — Translates incoming audio only (for foreign meetings, YouTube, lectures, podcasts).
+  - `🎙️ Outgoing Only` — Translates your voice only (for presentations, webinars, or outgoing voice calls).
+  - `⚡ Bidirectional (Meeting Mode)` — Full two-way live translation for meetings (Zoom, Teams, Meet, Discord).
+
 - 🔊 **Direct Low-Latency Speech Playback**: Real-time 24 kHz translated audio stream played directly into headphones or virtual audio cables.
 - 🔍 **Searchable Languages (80+)**: Instant search and selection across 80+ supported languages.
 - 🤖 **Automatic Language Detection**: Dynamically recognizes the speaker's language in real time.
-- 💬 **Live Subtitles & Transcripts**: Color-coded speaker tags (`🎙️ YOU`, `🎧 MEETING`) with live keyword search and highlighting.
+- 💬 **Live Subtitles & Transcripts**: Color-coded speaker tags with live keyword search and highlighting.
 - 📄 **1-Click TXT Export**: Save full transcripts with clean timestamps (`HH:MM:SS`) and speaker tags.
 - 📦 **Standalone Windows App**: Ready-to-use portable `.exe` with no complex setup needed.
 
 ---
 
-## 🚀 3-Step Quick Start (For Beginners)
+## 🚀 Quick Start
 
 ### Step 1: Install Free Virtual Audio Drivers (One-Time Setup)
 
@@ -49,15 +50,13 @@ To route audio between LiveSpeech Translator and meeting apps (like Zoom or Team
 
 ### Step 3: Choose Your Mode & Start Translating
 
-1. Select your desired mode on the top bar (`⚡ Bidirectional`, `🎙️ Outgoing`, or `🎧 Incoming`).
+1. Select your desired mode on the top bar (`🎧 Incoming`, `🎙️ Outgoing` or `⚡ Bidirectional`).
 2. Select your input/output audio devices according to the mode diagrams below.
-3. Click **`▶ START STREAMING`** (or press the **`Space`** bar).
+3. Click **`▶ START STREAMING`**.
 
 ---
 
-## 🎛️ Audio Setup Guide for All 3 Modes
-
----
+## 🎛️ Audio Setup Guide
 
 ### Mode 1: Incoming Only (Meeting / YouTube / Stream ➔ You)
 
@@ -65,33 +64,9 @@ Use this mode when you **only need to listen to foreign speech translated into y
 
 #### Audio Routing Diagram (incoming audio only)
 
-```plantuml
-@startuml
-!$ICONURL = "https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons"
-!include $ICONURL/common.puml
-!include $ICONURL/font-awesome-6/volume_high.puml
-!include $ICONURL/material/record_voice_over.puml
-skinparam {
-  ComponentStyle rectangle
-  DefaultTextAlignment center
-  backgroundColor White
-}
-left to right direction
-component "Meeting App/\nBrowser/\nMedia Player" as M #LightBlue{
-  interface out as MOut #Black
-  interface in as MIn #Black
-}
-component "LiveSpeech" as App #LightGreen {
-  interface in as AppIn #Black
-  interface out as AppOut #Black
-}
-FA6_VOLUME_HIGH(d1, "Your speaker")
-MATERIAL_RECORD_VOICE_OVER(d2, "Incoming audio")
-d2 --> MIn : original audio
-MOut --> AppIn : VB-Audio\nHi-Fi Cable
-AppOut --> d1 : translated audio
-@enduml
-```
+<p align="center">
+  <img src="docs/diagrams/mode1_incoming.svg" alt="mode1_incoming" width="100%">
+</p>
 
 #### ⚙️ Settings Configuration
 
@@ -116,33 +91,9 @@ Use this mode when you **only need your voice translated** to remote listeners (
 
 #### Audio Routing Diagram (outgoing audio only)
 
-```plantuml
-@startuml
-!$ICONURL = "https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons"
-!include $ICONURL/common.puml
-!include $ICONURL/font-awesome-6/microphone.puml
-!include $ICONURL/font-awesome-6/volume_high.puml
-skinparam {
-  ComponentStyle rectangle
-  DefaultTextAlignment center
-  backgroundColor White
-}
-left to right direction
-component "LiveSpeech" as App #LightGreen {
-  interface in as AppIn #Black
-  interface out as AppOut #Black
-}
-component "Meeting App/\nBrowser" as M #LightBlue {
-  interface out as MOut #Black
-  interface in as MIn #Black
-}
-FA6_MICROPHONE(d1, "Your mic")
-FA6_VOLUME_HIGH(d2, "Audience's\nSpeakers")
-d1 --> AppIn : original audio
-AppOut --> MIn : VB-Audio\nVirtual Cable
-MOut --> d2 : translated audio  
-@enduml
-```
+<p align="center">
+  <img src="docs/diagrams/mode2_outgoing.svg" alt="mode2_outgoing" width="100%">
+</p>
 
 #### ⚙️ Settings Configuration
 
@@ -164,54 +115,9 @@ Use this mode for **full two-way translation** in video meetings (Zoom, Microsof
 
 #### Audio Routing Diagram (bidirectional mode)
 
-```plantuml
-@startuml
-!$ICONURL = "https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons"
-!include $ICONURL/common.puml
-!include $ICONURL/font-awesome-6/microphone.puml
-!include $ICONURL/font-awesome-6/volume_high.puml
-!include $ICONURL/material/record_voice_over.puml
-skinparam {
-  ComponentStyle rectangle
-  DefaultTextAlignment center
-  backgroundColor White
-}
-left to right direction
-
-rectangle "Incoming Flow (Audience Speaks -> You Hear)" as InSection #EFF6FF {
-  MATERIAL_RECORD_VOICE_OVER(inc, "Incoming\naudio")
-  component "Meeting App/\nBrowser" as M2 #LightBlue {
-    interface in as MIn2 #Black
-    interface out as MOut2 #Black
-  }
-  component "LiveSpeech" as App2 #LightGreen {
-    interface out as AppOut2 #Black
-    interface in as AppIn2 #Black
-  }
-  FA6_VOLUME_HIGH(spk, "Your speaker")
-  inc --> MIn2 : original\nincoming audio
-  MOut2 --> AppIn2 : VB-Audio\nHi-Fi Cable
-  AppOut2 --> spk : translated\nincoming audio
-}
-
-rectangle "Outgoing Flow (You Speak -> Audience Hears)" as OutSection #F0FDF4 {
-  FA6_MICROPHONE(mic, "Your mic")
-  component "LiveSpeech" as App1 #LightGreen {
-    interface in as AppIn1 #Black
-    interface out as AppOut1 #Black
-  }
-  component "Meeting App/\nBrowser" as M1 #LightBlue {
-    interface out as MOut1 #Black
-    interface in as MIn1 #Black
-  }
-  FA6_VOLUME_HIGH(aud, "Audience's\nSpeakers")
-  mic --> AppIn1 : original\noutgoing audio
-  AppOut1 --> MIn1 : VB-Audio\nVirtual Cable
-  MOut1 --> aud : translated\noutgoing audio
-}
-
-@enduml
-```
+<p align="center">
+  <img src="docs/diagrams/mode3_bidirectional.svg" alt="mode3_bidirectional" width="100%">
+</p>
 
 #### ⚙️ Settings Configuration
 
@@ -219,12 +125,13 @@ rectangle "Outgoing Flow (You Speak -> Audience Hears)" as OutSection #F0FDF4 {
 
 | Section | Setting | What to Select |
 | :--- | :--- | :--- |
-| **🎙️ Outgoing Translation** | **Input (Microphone)** | Your physical Microphone |
-| | **Target Language** | Meeting attendees' language (e.g. `English`) |
+| | **Mode** | `⚡ Bidirectional` |
+| **🎙️ Outgoing Translation** | **Input** | Your physical Microphone |
 | | **Output (Virtual Cable)** | `CABLE Input (VB-Audio Virtual Cable)` |
-| **🎧 Incoming Translation** | **Input (Hi-Fi Cable)** | `HiFi Cable Output (VB-Audio Hi-Fi Cable)` |
-| | **Target Language** | Your native language (e.g. `Finnish`, `Spanish`) |
-| | **Output (Headphones)** | Your physical Headphones / Speakers |
+| | **Target Language** | Meeting attendees' language |
+| **🎧 Incoming Translation** | **Input** | `HiFi Cable Output (VB-Audio Hi-Fi Cable)` |
+| | **Output** | Your physical Headphones / Speakers |
+| | **Target Language** | Your native language |
 
 **2. Inside Meeting Apps (Zoom / Teams / Meet / Discord):**
 
@@ -327,3 +234,4 @@ The resulting executable will be in `dist\LiveSpeech-Translator.exe`.
 - **Desktop Runtime**: Microsoft Edge WebView2 via PyWebView
 - **Backend Server**: FastAPI + Uvicorn asyncio server on `127.0.0.1:8765`
 - **Configuration**: Local JSON storage in `config.json`
+- **Temporary storage**: Local JSON storage for transcripts in `transcripts.json`
