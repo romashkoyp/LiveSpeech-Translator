@@ -178,38 +178,38 @@ skinparam {
 }
 left to right direction
 
-rectangle "You" {
-  FA6_MICROPHONE(mic, "Your mic")
+rectangle "Incoming Flow (Audience Speaks -> You Hear)" as InSection #EFF6FF {
+  MATERIAL_RECORD_VOICE_OVER(inc, "Incoming\naudio")
+  component "Meeting App/\nBrowser" as M2 #LightBlue {
+    interface in as MIn2 #Black
+    interface out as MOut2 #Black
+  }
+  component "LiveSpeech" as App2 #LightGreen {
+    interface out as AppOut2 #Black
+    interface in as AppIn2 #Black
+  }
   FA6_VOLUME_HIGH(spk, "Your speaker")
+  inc --> MIn2 : original\nincoming audio
+  MOut2 --> AppIn2 : VB-Audio\nHi-Fi Cable
+  AppOut2 --> spk : translated\nincoming audio
 }
 
-component "LiveSpeech" as App #LightGreen {
-  interface in as AppIn1 #Black
-  interface out as AppOut1 #Black
-  interface out as AppOut2 #Black
-  interface in as AppIn2 #Black
-}
-
-component "Meeting App/\nBrowser" as M #LightBlue {
-  interface out as MOut1 #Black
-  interface in as MIn1 #Black
-  interface in as MIn2 #Black
-  interface out as MOut2 #Black
-}
-
-rectangle "Audience" {
+rectangle "Outgoing Flow (You Speak -> Audience Hears)" as OutSection #F0FDF4 {
+  FA6_MICROPHONE(mic, "Your mic")
+  component "LiveSpeech" as App1 #LightGreen {
+    interface in as AppIn1 #Black
+    interface out as AppOut1 #Black
+  }
+  component "Meeting App/\nBrowser" as M1 #LightBlue {
+    interface out as MOut1 #Black
+    interface in as MIn1 #Black
+  }
   FA6_VOLUME_HIGH(aud, "Audience's\nSpeakers")
-  MATERIAL_RECORD_VOICE_OVER(inc, "Incoming audio")
+  mic --> AppIn1 : original\noutgoing audio
+  AppOut1 --> MIn1 : VB-Audio\nVirtual Cable
+  MOut1 --> aud : translated\noutgoing audio
 }
 
-mic --> AppIn1 : original\noutgoing audio
-
-AppOut1 --> MIn1 : VB-Audio\nVirtual Cable
-MOut1 --> aud : translated\noutgoing audio
-
-inc --> MIn2 : original\nincoming audio
-MOut2 --> AppIn2 : VB-Audio\nHi-Fi Cable
-AppOut2 --> spk : translated\nincoming audio
 @enduml
 ```
 
