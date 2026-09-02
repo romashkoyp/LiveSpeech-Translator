@@ -1,254 +1,329 @@
-# LiveSpeech Translator: Real-Time Audio Translation & Meeting Subtitles Desktop App
+# ⚡ LiveSpeech Translator
 
-A lightweight, high-performance desktop application for real-time voice-to-voice translation and live subtitles powered by the **Google Gemini Live API (`gemini-3.5-live-translate-preview`)** and **PyWebView (Microsoft Edge WebView2)** totally FREE OF CHARGE for everyone.
+Real-time voice-to-voice translation and live subtitles desktop application powered by **Google Gemini Live API (`gemini-3.5-live-translate-preview`)**.
 
-Supports **Bidirectional (Two-Way) Live Meeting Translation** using a 100% free virtual audio cable topology for apps like Zoom, Google Meet, Microsoft Teams, and Discord.
+Translate meetings, voice calls, presentations, and streams in real time with zero subscription fees.
 
 ---
 
 ## 🌟 Key Features
 
-- ⚡ **Bidirectional Live Meeting Mode**: Translate two separate audio streams simultaneously:
-  - **Outgoing (You ➔ Meeting)**: Translates your microphone into the meeting app (e.g. Finnish ➔ English).
-  - **Incoming (Meeting ➔ You)**: Translates meeting attendees into your headphones (e.g. English ➔ Finnish).
-- 🎛️ **3 Operating Modes**:
-  - `⚡ Bidirectional (Meeting Mode)` — Full two-way live translation.
-  - `🎙️ Outgoing Only` — Only translates your voice to the target audience.
-  - `🎧 Incoming Only` — Only translates incoming audio from calls, videos, or streams to your headphones.
-- 🔊 **Direct Hardware Playback**: 24 kHz translated speech audio streams directly to your selected Windows playback devices with dedicated background audio workers.
-- 🔍 **Searchable Language Combobox**: Instant typing-based search and filtering across 80+ supported languages. Displays clean, natural language names (e.g. `Finnish`, `English`, `Swedish`).
-- 🤖 **Auto-Detected Source Language**: Speech language is automatically detected in real-time with dynamic language tags (e.g. `[FI]:`, `[EN]:`, `[FR]:`, `[ES]:`, `[DE]:`).
-- 💬 **Live Color-Coded Transcripts**: Real-time transcription with blue/purple speaker tags (`🎙️ YOU`, `🎧 MEETING`) and live typing animations.
-- 🔎 **Search with Keyword Highlighting**: Real-time transcript search with bright keyword highlighting across source and translated text.
-- 🎙️ **Dual VU Meters & Device Testing**: Live dBFS perceptual volume meters on all active inputs and outputs with an integrated **`🔊 Test Sound`** button.
-- ⚙️ **Secure Key & Config Persistence**: Live Gemini API key verification (`🟢 API Key configured` / `✅ Connected`), one-click key reset (`🗑️`), and persistence in `config.json`.
-- 📄 **Standardized TXT Export**: Verbatim export with 24-hour timestamps (`HH:MM:SS`), date headers, and speaker routing tags.
-- 📦 **Standalone Single-File Executable**: Compile to a portable Windows `.exe` with no external Python runtime required.
+- ⚡ **3 Translation Modes**:
+  - `⚡ Bidirectional (Meeting Mode)` — Full two-way live translation for meetings (Zoom, Teams, Meet, Discord).
+  - `🎙️ Outgoing Only` — Translates your voice only (for presentations, webinars, or outgoing voice calls).
+  - `🎧 Incoming Only` — Translates incoming audio only (for foreign meetings, YouTube, lectures, podcasts).
+- 🔊 **Direct Low-Latency Speech Playback**: Real-time 24 kHz translated audio stream played directly into headphones or virtual audio cables.
+- 🔍 **Searchable Languages (80+)**: Instant search and selection across 80+ supported languages.
+- 🤖 **Automatic Language Detection**: Dynamically recognizes the speaker's language in real time.
+- 💬 **Live Subtitles & Transcripts**: Color-coded speaker tags (`🎙️ YOU`, `🎧 MEETING`) with live keyword search and highlighting.
+- 📄 **1-Click TXT Export**: Save full transcripts with clean timestamps (`HH:MM:SS`) and speaker tags.
+- 📦 **Standalone Windows App**: Ready-to-use portable `.exe` with no complex setup needed.
 
 ---
 
-## 🗺️ Dual Virtual Cable Meeting Topology
+## 🚀 3-Step Quick Start (For Beginners)
 
-For bidirectional meeting translation, LiveSpeech Translator uses two free Windows audio drivers from VB-Audio:
+### Step 1: Install Free Virtual Audio Drivers (One-Time Setup)
 
-1. **VB-CABLE** ➔ `CABLE Input` / `CABLE Output` (Outgoing feed)
-2. **Hi-Fi CABLE** ➔ `HiFi Cable Input` / `HiFi Cable Output` (Incoming feed)
+To route audio between LiveSpeech Translator and meeting apps (like Zoom or Teams), install these two free drivers:
 
-```text
-+----------------------------------------------------------------------------------------+
-|                      CHANNEL 1: OUTGOING (You ➔ Meeting Attendees)                     |
-+----------------------------------------------------------------------------------------+
-  [🎙️ Physical Microphone]
-          │ (Your speech, e.g. Finnish)
-          ▼
-  [⚡ Gemini Live Session #1] (Target: English)
-          │ (Translated English audio stream)
-          ▼
-  [🔊 CABLE Input (VB-Audio Virtual Cable)]
-          │ (Virtual audio routing)
-          ▼
-  [💻 Zoom / Meet / Teams Mic (Set to CABLE Output)]
-          │ (Remote attendees hear translated speech)
-          ▼
-  [👥 Meeting Attendees]
+1. **VB-CABLE Driver**: [Download VB-CABLE](https://vb-audio.com/Cable/index.htm) *(used for Outgoing audio)*
+2. **Hi-Fi CABLE Driver**: [Download Hi-Fi CABLE](https://vb-audio.com/Cable/index.htm#DownloadASIOBridge) *(used for Incoming audio)*
 
-+----------------------------------------------------------------------------------------+
-|                      CHANNEL 2: INCOMING (Meeting Attendees ➔ You)                     |
-+----------------------------------------------------------------------------------------+
-  [👥 Meeting Attendees]
-          │ (Remote attendees speak, e.g. English)
-          ▼
-  [💻 Zoom / Meet / Teams Speaker (Set to HiFi Cable Input)]
-          │ (Meeting audio feed)
-          ▼
-  [🔊 HiFi Cable Output (VB-Audio Hi-Fi Cable)]
-          │ (Incoming audio stream)
-          ▼
-  [⚡ Gemini Live Session #2] (Target: Finnish)
-          │ (Translated Finnish audio stream)
-          ▼
-  [🎧 Physical Headphones / Speakers]
+> **How to install**:
+>
+> 1. Extract the downloaded ZIP folders.
+> 2. Right-click `VBCABLE_Setup_x64.exe` (or `HiFiCable_Setup_x64.exe`) and choose **"Run as administrator"**.
+> 3. Restart your computer after installation.
+
+---
+
+### Step 2: Add Your Free Gemini API Key
+
+1. Get a free API key from [Google AI Studio](https://aistudio.google.com/).
+2. Open **LiveSpeech Translator**.
+3. Click **`⚙️ Settings / API Key`** in the top-right corner.
+4. Paste your key and click **`🔄 Test Connection`** ➔ **`💾 Save & Apply`**.
+
+---
+
+### Step 3: Choose Your Mode & Start Translating
+
+1. Select your desired mode on the top bar (`⚡ Bidirectional`, `🎙️ Outgoing`, or `🎧 Incoming`).
+2. Select your input/output audio devices according to the mode diagrams below.
+3. Click **`▶ START STREAMING`** (or press the **`Space`** bar).
+
+---
+
+## 🎛️ Audio Setup Guide for All 3 Modes
+
+---
+
+### Mode 1: Incoming Only (Meeting / YouTube / Stream ➔ You)
+
+Use this mode when you **only need to listen to foreign speech translated into your headphones** (e.g. listening to a lecture, watching a live stream, watching a YouTube video, or listening to a meeting).
+
+#### Audio Routing Diagram (incoming audio only)
+
+```plantuml
+@startuml
+!$ICONURL = "https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons"
+!include $ICONURL/common.puml
+!include $ICONURL/font-awesome-6/volume_high.puml
+!include $ICONURL/material/record_voice_over.puml
+skinparam {
+  ComponentStyle rectangle
+  DefaultTextAlignment center
+  backgroundColor White
+}
+left to right direction
+component "Meeting App/\nBrowser/\nMedia Player" as M #LightBlue{
+  interface out as MOut #Black
+  interface in as MIn #Black
+}
+component "LiveSpeech" as App #LightGreen {
+  interface in as AppIn #Black
+  interface out as AppOut #Black
+}
+FA6_VOLUME_HIGH(d1, "Your speaker")
+MATERIAL_RECORD_VOICE_OVER(d2, "Incoming audio")
+d2 --> MIn : original audio
+MOut --> AppIn : VB-Audio\nHi-Fi Cable
+AppOut --> d1 : translated audio
+@enduml
 ```
 
-### Audio Device Mapping Summary
+#### ⚙️ Settings Configuration
 
-| Direction | LiveSpeech Translator Input | LiveSpeech Translator Output | Meeting App (Zoom / Teams / Meet) |
-| :--- | :--- | :--- | :--- |
-| **🎙️ Outgoing (Me ➔ Meeting)** | **Physical Microphone** | **`CABLE Input (VB-Audio)`** | **Microphone**: `CABLE Output (VB-Audio)` |
-| **🎧 Incoming (Meeting ➔ Me)** | **`HiFi Cable Output`** | **Physical Headphones** | **Speaker**: `HiFi Cable Input` |
+**1. Inside Source App settings (Meeting App / Browser / Media Player):**
+
+- **Speaker / Audio Output**: Select `HiFi Cable Input (VB-Audio Hi-Fi Cable)`.
+
+**2. Inside LiveSpeech Translator:**
+
+| Setting | What to Select |
+| :--- | :--- |
+| **Mode** | `Incoming Only` |
+| **Input** | `HiFi Cable Output (VB-Audio Hi-Fi Cable)` |
+| **Output** | Your physical Headphones / Speakers |
+| **Target Language** | Your native language |
 
 ---
 
-## 🚀 Quick Start (Windows 10 / 11)
+### Mode 2: Outgoing Only (You ➔ Others / Presentation)
 
-### Option 1: Run the Standalone Executable (.exe)
+Use this mode when you **only need your voice translated** to remote listeners (e.g. giving a presentation, hosting a webinar, streaming, or in-person speaking).
 
-Double-click [`dist\LiveSpeech-Translator.exe`](dist/LiveSpeech-Translator.exe) to start the app immediately.
+#### Audio Routing Diagram (outgoing audio only)
 
-### Option 2: Run from Python Source
-
-```bash
-# Install dependencies
-pip install fastapi uvicorn pywebview google-genai pyaudio numpy pydantic langdetect pyinstaller
-
-# Launch application
-python main.py
+```plantuml
+@startuml
+!$ICONURL = "https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons"
+!include $ICONURL/common.puml
+!include $ICONURL/font-awesome-6/microphone.puml
+!include $ICONURL/font-awesome-6/volume_high.puml
+skinparam {
+  ComponentStyle rectangle
+  DefaultTextAlignment center
+  backgroundColor White
+}
+left to right direction
+component "LiveSpeech" as App #LightGreen {
+  interface in as AppIn #Black
+  interface out as AppOut #Black
+}
+component "Meeting App/\nBrowser" as M #LightBlue {
+  interface out as MOut #Black
+  interface in as MIn #Black
+}
+FA6_MICROPHONE(d1, "Your mic")
+FA6_VOLUME_HIGH(d2, "Audience's\nSpeakers")
+d1 --> AppIn : original audio
+AppOut --> MIn : VB-Audio\nVirtual Cable
+MOut --> d2 : translated audio  
+@enduml
 ```
 
-### Option 3: Build Executable from Source
+#### ⚙️ Settings Configuration
 
-Double-click [`build_exe.bat`](build_exe.bat) or run:
+**1. Inside Your Meeting / Streaming App:**
 
-```bash
-python -m PyInstaller --clean livespeech-translator.spec
+- **Microphone**: Select `CABLE Output (VB-Audio Virtual Cable)`.
+
+**2. Inside LiveSpeech Translator:**
+
+| Setting | What to Select |
+| :--- | :--- |
+| **Input** | Your physical Microphone |
+| **Output** | `CABLE Input (VB-Audio Virtual Cable)` |
+| **Target Language** | The audience's language |
+
+### Mode 3: Bidirectional (Live Meeting Mode)
+
+Use this mode for **full two-way translation** in video meetings (Zoom, Microsoft Teams, Google Meet, Discord). You speak in your language and attendees hear translated speech; when they speak, you hear translated speech in your headphones.
+
+#### Audio Routing Diagram (bidirectional mode)
+
+```plantuml
+@startuml
+!$ICONURL = "https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons"
+!include $ICONURL/common.puml
+!include $ICONURL/font-awesome-6/microphone.puml
+!include $ICONURL/font-awesome-6/volume_high.puml
+!include $ICONURL/material/record_voice_over.puml
+skinparam {
+  ComponentStyle rectangle
+  DefaultTextAlignment center
+  backgroundColor White
+}
+left to right direction
+
+rectangle "You" {
+  FA6_MICROPHONE(mic, "Your mic")
+  FA6_VOLUME_HIGH(spk, "Your speaker")
+}
+
+component "LiveSpeech" as App #LightGreen {
+  interface in as AppIn1 #Black
+  interface out as AppOut1 #Black
+  interface out as AppOut2 #Black
+  interface in as AppIn2 #Black
+}
+
+component "Meeting App/\nBrowser" as M #LightBlue {
+  interface out as MOut1 #Black
+  interface in as MIn1 #Black
+  interface in as MIn2 #Black
+  interface out as MOut2 #Black
+}
+
+rectangle "Audience" {
+  FA6_VOLUME_HIGH(aud, "Audience's\nSpeakers")
+  MATERIAL_RECORD_VOICE_OVER(inc, "Incoming audio")
+}
+
+mic --> AppIn1 : original\noutgoing audio
+
+AppOut1 --> MIn1 : VB-Audio\nVirtual Cable
+MOut1 --> aud : translated\noutgoing audio
+
+inc --> MIn2 : original\nincoming audio
+MOut2 --> AppIn2 : VB-Audio\nHi-Fi Cable
+AppOut2 --> spk : translated\nincoming audio
+@enduml
 ```
 
-The compiled binary will be placed in `dist\LiveSpeech-Translator.exe`.
+#### ⚙️ Settings Configuration
 
----
+**1. Inside LiveSpeech Translator:**
 
-## ⚙️ Initial Configuration (Gemini API Key)
+| Section | Setting | What to Select |
+| :--- | :--- | :--- |
+| **🎙️ Outgoing Translation** | **Input (Microphone)** | Your physical Microphone |
+| | **Target Language** | Meeting attendees' language (e.g. `English`) |
+| | **Output (Virtual Cable)** | `CABLE Input (VB-Audio Virtual Cable)` |
+| **🎧 Incoming Translation** | **Input (Hi-Fi Cable)** | `HiFi Cable Output (VB-Audio Hi-Fi Cable)` |
+| | **Target Language** | Your native language (e.g. `Finnish`, `Spanish`) |
+| | **Output (Headphones)** | Your physical Headphones / Speakers |
 
-1. Open **LiveSpeech Translator**.
-2. Click **`⚙️ Settings / API Key`** in the top-right header.
-3. Enter your **Google Gemini API Key** ([Get a key from Google AI Studio](https://aistudio.google.com/)).
-4. Click **`🔄 Test Connection`** to verify (status changes to `🟢 API Key configured`).
-5. Click **`💾 Save & Apply`**.
-
----
-
-## 🎧 Audio Routing Setup Guide
-
-### 1. Free Virtual Audio Drivers Installation
-
-- **VB-CABLE Driver** (Standard): [vb-audio.com/Cable](https://vb-audio.com/Cable/index.htm)
-- **Hi-Fi CABLE Driver**: [vb-audio.com/Cable/index.htm#DownloadHiFiCable](https://vb-audio.com/Cable/index.htm#DownloadASIOBridge)
-
-*(Restart your PC after installing the audio drivers).*
-
-### 2. Configure LiveSpeech Translator
-
-1. Select **`⚡ Bidirectional (Meeting Mode)`** on the mode bar.
-2. In **Outgoing Translation (You ➔ Meeting)**:
-   - **Input**: Your physical Microphone.
-   - **Target Language**: Type or select the language remote attendees speak (e.g. `English`).
-   - **Output**: `CABLE Input (VB-Audio Virtual Cable)`.
-3. In **Incoming Translation (Meeting ➔ You)**:
-   - **Input**: `HiFi Cable Output (VB-Audio Hi-Fi Cable)`.
-   - **Target Language**: Type or select your native language (e.g. `Finnish`).
-   - **Output**: Your physical Headphones / Speakers.
-   - Click **`🔊 Test`** to confirm test audio plays in your headphones.
-
-### 3. Configure Zoom / Teams / Google Meet
+**2. Inside Meeting Apps (Zoom / Teams / Meet / Discord):**
 
 - **Microphone**: Select `CABLE Output (VB-Audio Virtual Cable)`.
 - **Speaker**: Select `HiFi Cable Input (VB-Audio Hi-Fi Cable)`.
 
-### 4. Start Live Translation
-
-- Click **`▶ START STREAMING`** (or press `Space`).
-- Speak into your mic: your speech will be translated and streamed to the meeting app.
-- Remote attendees speak: their audio will be translated and played through your headphones.
-
 ---
 
-## ⌨️ Controls & Shortcuts
+## 📄 Transcript Export Format Examples
 
-| Action | Shortcut / Control | Description |
-| :--- | :--- | :--- |
-| **Start / Stop Session** | `Space` / `▶ START STREAMING` | Toggles live audio capture and streaming across active channels. |
-| **Mode Selection** | `⚡ Bidirectional` / `🎙️ Outgoing` / `🎧 Incoming` | Switches between two-way meeting mode and single-channel modes. |
-| **Language Search** | Type in **Target Language** field | Instantly filters 80+ supported languages by name or code. |
-| **Settings & API Key** | `⚙️ Settings / API Key` | Configure, verify, or reset your Gemini API key. |
-| **Test Output Sound** | `🔊 Test` | Plays a 2-tone chime through headphones to verify routing. |
-| **Search Transcripts** | Search box in bottom toolbar | Live keyword search with bright yellow/amber text highlighting. |
-| **Auto-scroll Toggle** | `Auto-Scroll` checkbox | Automatically follows newest transcript entries. |
-| **Clear Transcripts** | `🧹 Clear` | Clears transcript feed and session memory. |
-| **Export Transcripts** | `📄 Export TXT` | Exports complete meeting transcript with timestamps and speaker tags. |
-
----
-
-## 📄 Export Format Example
-
-for bidirectional mode txt export example:
+### Bidirectional Mode Export
 
 ```text
 LiveSpeech Translator Transcript
 ══════════════════════════════════════════════════
 Mode:        bidirectional
-Export Date: 18.08.2026 12:30:00
+Export Date: 01.09.2026 14:00:00
 ══════════════════════════════════════════════════
 
-[12:30:05]
-[YOU SPEAK → EN]: Hello everyone, glad to join the meeting!
-[THEY HEAR → FI]: Hei kaikki, mukava liittyä kokoukseen!
+[14:00:05]
+[YOU SPEAK → EN]: Hello everyone, thanks for joining the call today.
+[THEY HEAR → FI]: Hei kaikki, kiitos että liityitte puheluun tänään.
 
-
-[12:30:14]
-[THEY SPEAK → FI]: Tervetuloa! Keskustelimme juuri projektin aikataulusta.
-[YOU HEAR   → EN]: Welcome! We were just discussing the project timeline.
-
+[14:00:15]
+[THEY SPEAK → FI]: Tervetuloa! Käydään läpi projektin nykytilanne.
+[YOU HEAR   → EN]: Welcome! Let's go over the current status of the project.
 ```
 
-For incoming mode:
+### Incoming Mode Export
 
 ```text
 LiveSpeech Translator Transcript
 ══════════════════════════════════════════════════
-Mode: incoming
-Export Date: 18.08.2026 12:30:00
+Mode:        incoming
+Export Date: 01.09.2026 14:00:00
 ══════════════════════════════════════════════════
 
-[12:30:14]
-[THEY SPEAK → EN]: Welcome! We were just discussing the project timeline.
-[YOU HEAR   → FI]: Tervetuloa! Keskustelimme juuri projektin aikataulusta.
+[14:00:15]
+[THEY SPEAK → EN]: Welcome to the annual technology keynote.
+[YOU HEAR   → FI]: Tervetuloa vuotuiseen teknologiakatsaukseen.
 ```
 
-For outgoing mode:
+### Outgoing Mode Export
 
 ```text
 LiveSpeech Translator Transcript
 ══════════════════════════════════════════════════
-Mode: outgoing
-Export Date: 18.08.2026 12:30:00
+Mode:        outgoing
+Export Date: 01.09.2026 14:00:00
 ══════════════════════════════════════════════════
 
-[12:30:14]
-[YOU SPEAK → EN]: Welcome! We were just discussing the project timeline.
-[THEY HEAR → FI]: Tervetuloa! Keskustelimme juuri projektin aikataulusta.
+[14:00:05]
+[YOU SPEAK → FI]: Tervetuloa esitykseen, aloitamme heti.
+[THEY HEAR → EN]: Welcome to the presentation, we will start right away.
 ```
 
 ---
 
-## 📁 Project Architecture
+## 💻 Developer & Build Guide
 
+### Option 1: Run from Standalone Binary (.exe)
+
+Directly run the compiled executable:
+
+```bash
+dist\LiveSpeech-Translator.exe
 ```
-livespeech-translator/
-├── main.py                  # Entrypoint (FastAPI server daemon + PyWebView desktop window)
-├── build_exe.bat            # One-click PyInstaller executable build script
-├── livespeech-translator.spec # PyInstaller packaging configuration
-├── config.json              # Local persistent configuration (API Key, Device indices, Mode)
-├── dist/
-│   └── LiveSpeech-Translator.exe # Standalone portable Windows binary
-└── app/
-    ├── config.py            # Nested channel config manager & 80+ language definitions
-    ├── audio_manager.py     # Multi-track audio engine (independent capture/playback tracks)
-    ├── gemini_live.py       # Gemini Live WebSocket client (voice-to-voice + token streams)
-    ├── server.py            # FastAPI backend, multi-track audio router & WebSocket hub
-    ├── window_manager.py    # Native Edge WebView2 desktop window controller
-    └── static/
-        ├── index.html       # Clean glassmorphic layout with 2/3 & 1/3 proportional grid
-        ├── css/styles.css   # Dark glassmorphic design system, typography & animations
-        └── js/app.js        # Searchable comboboxes, audio level meters & live search highlighting
+
+### Option 2: Run from Python Source
+
+```bash
+# 1. Install dependencies
+pip install fastapi uvicorn pywebview google-genai pyaudio numpy pydantic langdetect pyinstaller
+
+# 2. Run application
+python main.py
 ```
+
+### Option 3: Build Standalone Executable (.exe)
+
+Run the build script or use PyInstaller:
+
+```bash
+# Using batch file
+build_exe.bat
+
+# Or using PyInstaller directly
+python -m PyInstaller --clean livespeech-translator.spec
+```
+
+The resulting executable will be in `dist\LiveSpeech-Translator.exe`.
 
 ---
 
 ## 🛠️ Technical Specifications
 
 - **AI Translation Model**: `gemini-3.5-live-translate-preview` via Google GenAI Live WebSocket API
-- **Input Audio Capture**: 16,000 Hz, 16-bit Mono Linear PCM (100ms / 1600 frame chunks per channel)
-- **Output Audio Playback**: 24,000 Hz, 16-bit Linear PCM (background worker threads with auto stereo expansion)
-- **Language Detection**: Real-time multi-tier detector (Gemini metadata + script heuristics + `langdetect`)
+- **Input Audio Capture**: 16,000 Hz, 16-bit Mono Linear PCM
+- **Output Audio Playback**: 24,000 Hz, 16-bit Linear PCM direct hardware stream
 - **Desktop Runtime**: Microsoft Edge WebView2 via PyWebView
 - **Backend Server**: FastAPI + Uvicorn asyncio server on `127.0.0.1:8765`
+- **Configuration**: Local JSON storage in `config.json`
