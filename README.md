@@ -70,11 +70,22 @@ Use this mode when you **only need to listen to foreign speech translated into y
 
 #### ⚙️ Settings Configuration
 
-**1. Inside Source App settings (Meeting App / Browser / Media Player):**
+**1. For meeting apps like Zoom, Teams, Google Meet, Discord, Telegram, Whatsapp and etc.:**
 
-- **Speaker / Audio Output**: Select `HiFi Cable Input (VB-Audio Hi-Fi Cable)`.
+- Open **Meeting app** and go to **audio settings**
+- Set **Speaker / Audio Output** to `HiFi Cable Input (VB-Audio Hi-Fi Cable)`
 
-**2. Inside LiveSpeech Translator:**
+**2. For browsers like Chrome, Edge, Firefox, Opera, Brave and etc.:**
+
+- Open **Windows** settings -> **System** -> **Sound** -> **Volume Mixer**
+- In **Apps** section find your **Browser**
+- Set `HiFi Cable Input (VB-Audio Hi-Fi Cable)` as output device instead of **Default**
+
+<p align="center">
+  <img src="docs/images/windows-settings.png" alt="windows-settings" width="100%">
+</p>
+
+**3. Inside LiveSpeech Translator:**
 
 | Setting | What to Select |
 | :--- | :--- |
