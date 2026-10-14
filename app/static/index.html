@@ -5,6 +5,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LiveSpeech Translator</title>
+  <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/icon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png">
+  <link rel="shortcut icon" href="/static/favicon.ico">
   <link rel="stylesheet" href="/static/css/styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,7 +19,7 @@
   <!-- ── STATUS BAR ──────────────────────────────────────────── -->
   <header class="status-bar">
     <div class="status-left">
-      <span class="app-logo">⚡</span>
+      <img src="/static/icon.svg" class="app-logo" alt="LiveSpeech Translator" width="24" height="24">
       <span class="app-title">LiveSpeech Translator</span>
       <span class="status-badge" id="statusBadge">
         <span class="status-dot"></span>
@@ -44,7 +48,7 @@
       <div class="mode-buttons">
         <button class="mode-btn active" data-mode="bidirectional" id="modeBidirectional"
           title="Full meeting mode: translate in both directions simultaneously">
-          ⚡ Bidirectional (Meeting Mode)
+          ⇄ Bidirectional (Meeting Mode)
         </button>
         <button class="mode-btn" data-mode="outgoing" id="modeOutgoing" title="Translate your microphone only">
           🎙️ Outgoing Only

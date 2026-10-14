@@ -1,4 +1,8 @@
-# ⚡ LiveSpeech Translator
+<p align="center">
+  <img src="art/app_icon.svg" width="96" height="96" alt="LiveSpeech Translator Logo" />
+</p>
+
+# LiveSpeech Translator
 
 Real-time voice-to-voice translation and live subtitles desktop application powered by **Google Gemini Live API (`gemini-3.5-live-translate-preview`)**.
 
@@ -8,10 +12,10 @@ Translate meetings, voice calls, presentations, and streams in real time with ze
 
 ## 🌟 Key Features
 
-- ⚡ **3 Translation Modes**:
-  - `🎧 Incoming Only` — Translates incoming audio only (for foreign meetings, YouTube, lectures, podcasts).
-  - `🎙️ Outgoing Only` — Translates your voice only (for presentations, webinars, or outgoing voice calls).
-  - `⚡ Bidirectional (Meeting Mode)` — Full two-way live translation for meetings (Zoom, Teams, Meet, Discord).
+- **3 Translation Modes**:
+- `🎧 Incoming Only` — Translates incoming audio only (for foreign meetings, YouTube, lectures, podcasts).
+- `🎙️ Outgoing Only` — Translates your voice only (for presentations, webinars, or outgoing voice calls).
+- `⇄ Bidirectional (Meeting Mode)` — Full two-way live translation for meetings (Zoom, Teams, Meet, Discord).
 
 - 🔊 **Direct Low-Latency Speech Playback**: Real-time 24 kHz translated audio stream played directly into headphones or virtual audio cables.
 - 🔍 **Searchable Languages (80+)**: Instant search and selection across 80+ supported languages.
@@ -50,7 +54,7 @@ To route audio between LiveSpeech Translator and meeting apps (like Zoom or Team
 
 ### Step 3: Choose Your Mode & Start Translating
 
-1. Select your desired mode on the top bar (`🎧 Incoming`, `🎙️ Outgoing` or `⚡ Bidirectional`).
+1. Select your desired mode on the top bar (`🎧 Incoming`, `🎙️ Outgoing` or `⇄ Bidirectional`).
 2. Select your input/output audio devices according to the mode diagrams below.
 3. Click **`▶ START STREAMING`**.
 
@@ -120,7 +124,7 @@ Use this mode when you **only need your voice translated** to remote listeners (
 | **Output** | `CABLE Input (VB-Audio Virtual Cable)` |
 | **Target Language** | The audience's language |
 
-### Mode 3: Bidirectional (Live Meeting Mode)
+### Mode 3: ⇄ Bidirectional (Live Meeting Mode)
 
 Use this mode for **full two-way translation** in video meetings (Zoom, Microsoft Teams, Google Meet, Discord). You speak in your language and attendees hear translated speech; when they speak, you hear translated speech in your headphones.
 
@@ -136,7 +140,7 @@ Use this mode for **full two-way translation** in video meetings (Zoom, Microsof
 
 | Section | Setting | What to Select |
 | :--- | :--- | :--- |
-| | **Mode** | `⚡ Bidirectional` |
+| | **Mode** | `⇄ Bidirectional` |
 | **🎙️ Outgoing Translation** | **Input** | Your physical Microphone |
 | | **Output (Virtual Cable)** | `CABLE Input (VB-Audio Virtual Cable)` |
 | | **Target Language** | Meeting attendees' language |

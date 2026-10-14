@@ -4,7 +4,27 @@ Creates the main dashboard window and the floating subtitle overlay using
 Windows 11 built-in Microsoft Edge WebView2 runtime.
 """
 
+import sys
+from pathlib import Path
 import webview
+
+
+def _resolve_icon_path() -> str | None:
+    """Locate the desktop .ico icon for PyWebView native window."""
+    if getattr(sys, "frozen", False):
+        base_dir = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+    else:
+        base_dir = Path(__file__).resolve().parent.parent
+
+    candidates = [
+        base_dir / "assets" / "icon.ico",
+        base_dir / "app" / "static" / "favicon.ico",
+        base_dir / "static" / "favicon.ico",
+    ]
+    for c in candidates:
+        if c.exists():
+            return str(c)
+    return None
 
 
 class WindowManager:
@@ -32,4 +52,8 @@ class WindowManager:
         Start the PyWebView event loop.
         This call blocks until all windows are closed.
         """
-        webview.start(debug=False)
+        icon_path = _resolve_icon_path()
+        if icon_path:
+            webview.start(debug=False, icon=icon_path)
+        else:
+            webview.start(debug=False)

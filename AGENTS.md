@@ -78,6 +78,8 @@ LiveSpeech-Translator/
 ├── livespeech-translator.spec   # PyInstaller packaging specification with hidden imports & excludes
 ├── main.py                      # Application entry point: starts FastAPI daemon & PyWebView window
 ├── transcripts.json             # Runtime persistence of session translation history
+├── art/                         # Master branding artwork and vector design source files (app_icon.svg)
+├── assets/                      # Application icons and packaged binary artwork (icon.ico, app_icon_512.png)
 ├── app/                         # Core application package
 │   ├── __init__.py              # Package marker
 │   ├── audio_manager.py         # PyAudio hardware capture, playback tracks, and VU meter calculations

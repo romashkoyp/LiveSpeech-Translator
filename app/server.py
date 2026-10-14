@@ -196,6 +196,15 @@ app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Serve the application favicon."""
+    ico_path = STATIC_DIR / "favicon.ico"
+    if ico_path.exists():
+        return FileResponse(str(ico_path), media_type="image/x-icon")
+    return FileResponse(str(STATIC_DIR / "icon.svg"), media_type="image/svg+xml")
+
+
 # ── Pydantic Models ──────────────────────────────────────────────────
 
 class ChannelConfigUpdate(BaseModel):
