@@ -1,8 +1,8 @@
 """
 Gemini Live Translation client.
 Manages the WebSocket session to gemini-3.5-live-translate-preview,
-streams input audio, dispatches output audio for hardware playback,
-and publishes transcription tokens to subscribers.
+streams input audio via a decoupled bounded asyncio queue, dispatches output
+audio for hardware playback, and publishes transcription tokens to subscribers.
 
 Each instance can be tagged with a channel_id ("outgoing" or "incoming")
 to support bidirectional meeting translation with independent sessions.
@@ -23,13 +23,17 @@ class GeminiLiveTranslator:
 
     Events are dispatched via callback functions:
         on_output_audio(data: bytes)         — translated PCM audio chunk
-        on_input_transcript(text: str)       — original speech transcription token
+        on_input_transcript(text: str, lang: str | None) — original speech token + Gemini language
         on_output_transcript(text: str)      — translated speech transcription token
         on_status(state: str, detail: str)   — session state changes
 
     All callbacks include a `channel` keyword argument identifying
     the source channel ("outgoing" or "incoming").
     """
+
+    # Bound upstream audio queue to ~800ms of audio (20 chunks @ 40ms)
+    # so network stalls never cause unbounded latency drift.
+    MAX_UPSTREAM_CHUNKS = 20
 
     def __init__(
         self,
@@ -49,9 +53,10 @@ class GeminiLiveTranslator:
 
         self._client = genai.Client(api_key=api_key)
         self._session = None
-        self._running = False
-        self._start_time = None
+        self._running = True  # Set True immediately on construction to prevent idle-monitor races
+        self._start_time = time.time()
         self._resumption_handle: str | None = None
+        self._detected_input_lang: str | None = None
 
         # Callbacks (set by the server layer)
         self.on_output_audio = None
@@ -73,9 +78,9 @@ class GeminiLiveTranslator:
         """Signals the streaming loop to terminate."""
         self._running = False
 
-    def _build_config(self) -> types.LiveConnectConfig:
+    def _build_config(self, use_resumption: bool = True) -> types.LiveConnectConfig:
         """Build the Gemini Live connection configuration with session resumption."""
-        if self._resumption_handle:
+        if use_resumption and self._resumption_handle:
             resumption_config = types.SessionResumptionConfig(
                 handle=self._resumption_handle,
             )
@@ -93,26 +98,30 @@ class GeminiLiveTranslator:
             session_resumption=resumption_config,
         )
 
-    async def run_streaming_loop(self, read_chunk_async_fn, chunk_size: int = 1600):
+    async def run_streaming_loop(self, read_chunk_async_fn, chunk_size: int = 640):
         """
         Connects to Gemini Live API using async context manager and runs
         bi-directional audio & text streaming concurrently until stopped.
         Automatically handles session resumption, GoAway signals, and transient
-        disconnects to keep sessions alive across long meetings.
+        disconnects without losing resumption handles.
         """
         self._running = True
         self._start_time = time.time()
         retry_delay = 0.5
         consecutive_errors = 0
         max_consecutive_errors = 5
+        mime_type = f"audio/pcm;rate={self.rate_in}"
 
         try:
             while self._running:
                 conn_active = asyncio.Event()
                 conn_active.set()
+                go_away_pending = False
+                used_handle_on_connect = bool(self._resumption_handle)
+                connected_successfully = False
 
                 try:
-                    config = self._build_config()
+                    config = self._build_config(use_resumption=True)
                     if self._resumption_handle:
                         self._emit_status("refreshing", f"[{self.channel_id}] Resuming live translation session...")
                     else:
@@ -120,29 +129,59 @@ class GeminiLiveTranslator:
 
                     async with self._client.aio.live.connect(model=self.model_id, config=config) as session:
                         self._session = session
+                        connected_successfully = True
                         consecutive_errors = 0
                         retry_delay = 0.5
                         self._emit_status("connected", f"[{self.channel_id}] Connected to {self.model_id}")
 
-                        async def audio_streamer():
+                        upstream_queue: asyncio.Queue[bytes | None] = asyncio.Queue(
+                            maxsize=self.MAX_UPSTREAM_CHUNKS
+                        )
+
+                        async def audio_capture_producer():
+                            """Continuously drains PortAudio hardware buffer independent of network backpressure."""
                             while self._running and conn_active.is_set():
                                 data = await read_chunk_async_fn(chunk_size)
-                                if data and self._running and conn_active.is_set():
+                                if not self._running or not conn_active.is_set():
+                                    break
+                                if data:
+                                    if upstream_queue.full():
+                                        try:
+                                            upstream_queue.get_nowait()
+                                        except asyncio.QueueEmpty:
+                                            pass
                                     try:
-                                        await session.send_realtime_input(
-                                            audio=types.Blob(
-                                                data=data, mime_type=f"audio/pcm;rate={self.rate_in}"
-                                            )
-                                        )
-                                    except Exception:
-                                        conn_active.clear()
-                                        break
+                                        upstream_queue.put_nowait(data)
+                                    except asyncio.QueueFull:
+                                        pass
+                                else:
+                                    await asyncio.sleep(0.005)
 
-                        async def translation_receiver():
-                            new_line = False
+                        async def audio_network_sender():
+                            """Streams queued PCM frames over the WebSocket."""
                             while self._running and conn_active.is_set():
                                 try:
+                                    data = await asyncio.wait_for(upstream_queue.get(), timeout=0.1)
+                                except asyncio.TimeoutError:
+                                    continue
+                                if data is None or not self._running or not conn_active.is_set():
+                                    break
+                                try:
+                                    await session.send_realtime_input(
+                                        audio=types.Blob(data=data, mime_type=mime_type)
+                                    )
+                                except Exception:
+                                    conn_active.clear()
+                                    break
+
+                        async def translation_receiver():
+                            nonlocal go_away_pending
+                            new_line = False
+                            while self._running and conn_active.is_set():
+                                received_any_in_turn = False
+                                try:
                                     async for response in session.receive():
+                                        received_any_in_turn = True
                                         if not self._running or not conn_active.is_set():
                                             break
 
@@ -152,83 +191,101 @@ class GeminiLiveTranslator:
                                             if getattr(sru, "resumable", False) and getattr(sru, "new_handle", None):
                                                 self._resumption_handle = sru.new_handle
 
-                                        # Handle GoAway signal from server (session duration limit notice)
+                                        # Handle GoAway signal: mark pending and reconnect cleanly on turn boundary
                                         if response.go_away:
                                             time_left = getattr(response.go_away, "time_left", "soon")
                                             self._emit_status(
                                                 "refreshing",
                                                 f"[{self.channel_id}] Session renewing (GoAway received, time left: {time_left})...",
                                             )
-                                            conn_active.clear()
-                                            break
+                                            go_away_pending = True
 
                                         sc = response.server_content
-                                        if not sc:
-                                            continue
+                                        if sc:
+                                            # Input transcription with Gemini language detection
+                                            if sc.input_transcription:
+                                                text = getattr(sc.input_transcription, "text", "") or ""
+                                                detected_lang = getattr(sc.input_transcription, "language_code", None)
+                                                if detected_lang:
+                                                    self._detected_input_lang = detected_lang
+                                                lang = detected_lang or self._detected_input_lang
+                                                if text and self.on_input_transcript:
+                                                    self.on_input_transcript(text, lang, channel=self.channel_id)
 
-                                        # Input transcription (original speech)
-                                        if sc.input_transcription and sc.input_transcription.text:
-                                            text = sc.input_transcription.text
-                                            lang = getattr(sc.input_transcription, "language_code", None)
-                                            if self.on_input_transcript:
-                                                self.on_input_transcript(text, lang, channel=self.channel_id)
+                                            # Output transcription (translated speech text)
+                                            has_output_transcription = False
+                                            if sc.output_transcription and sc.output_transcription.text:
+                                                has_output_transcription = True
+                                                text = sc.output_transcription.text
+                                                if new_line:
+                                                    text = text.lstrip()
+                                                new_line = text.endswith((".", "?", "!", "。"))
+                                                if self.on_output_transcript:
+                                                    self.on_output_transcript(
+                                                        text + ("\n" if new_line else ""),
+                                                        channel=self.channel_id,
+                                                    )
 
-                                        # Output transcription (translated speech text)
-                                        if sc.output_transcription and sc.output_transcription.text:
-                                            text = sc.output_transcription.text
-                                            if new_line:
-                                                text = text.lstrip()
-                                            new_line = text.endswith((".", "?", "!", "。"))
-                                            if self.on_output_transcript:
-                                                self.on_output_transcript(text + ("\n" if new_line else ""), channel=self.channel_id)
-
-                                        # Model turn — contains audio data and optionally text
-                                        if sc.model_turn:
-                                            for part in sc.model_turn.parts:
-                                                if part.inline_data and part.inline_data.data:
-                                                    raw_audio = part.inline_data.data
-                                                    if isinstance(raw_audio, str):
-                                                        try:
-                                                            raw_audio = base64.b64decode(raw_audio)
-                                                        except Exception:
-                                                            pass
-                                                    if self.on_output_audio and raw_audio:
-                                                        self.on_output_audio(raw_audio, channel=self.channel_id)
-                                                if part.text:
-                                                    if self.on_output_transcript:
+                                            # Model turn — contains translated audio data
+                                            if sc.model_turn:
+                                                for part in sc.model_turn.parts:
+                                                    if part.inline_data and part.inline_data.data:
+                                                        raw_audio = part.inline_data.data
+                                                        if isinstance(raw_audio, str):
+                                                            try:
+                                                                raw_audio = base64.b64decode(raw_audio)
+                                                            except Exception:
+                                                                pass
+                                                        if self.on_output_audio and raw_audio:
+                                                            self.on_output_audio(raw_audio, channel=self.channel_id)
+                                                    # Only fallback to part.text if output_transcription was not emitted
+                                                    if part.text and not has_output_transcription and self.on_output_transcript:
                                                         self.on_output_transcript(part.text, channel=self.channel_id)
+
+                                            # Reset detected language on turn completion
+                                            if getattr(sc, "turn_complete", False):
+                                                self._detected_input_lang = None
+
+                                            # If GoAway is pending and the current turn completed, reconnect gracefully
+                                            if go_away_pending and getattr(sc, "turn_complete", False):
+                                                conn_active.clear()
+                                                break
+                                        elif go_away_pending:
+                                            conn_active.clear()
+                                            break
 
                                 except Exception as e:
                                     conn_active.clear()
                                     err_str = str(e)
-                                    # Normal WebSocket closure (1000 OK / 1001 Going Away) is not an error
                                     if "1000" in err_str or getattr(e, "code", None) in (1000, 1001):
                                         break
                                     raise
 
-                                if not self._running or not conn_active.is_set():
+                                # Prevent 100% CPU spin loop if session.receive() iterator exhausted on clean EOF
+                                if not received_any_in_turn or go_away_pending:
+                                    conn_active.clear()
                                     break
 
-                        streamer_task = asyncio.create_task(audio_streamer())
+                        producer_task = asyncio.create_task(audio_capture_producer())
+                        sender_task = asyncio.create_task(audio_network_sender())
                         receiver_task = asyncio.create_task(translation_receiver())
+                        tasks = [producer_task, sender_task, receiver_task]
 
                         done, pending = await asyncio.wait(
-                            [streamer_task, receiver_task],
+                            tasks,
                             return_when=asyncio.FIRST_COMPLETED,
                         )
 
                         conn_active.clear()
+                        try:
+                            upstream_queue.put_nowait(None)
+                        except Exception:
+                            pass
+
                         for t in pending:
                             t.cancel()
-                            try:
-                                await t
-                            except asyncio.CancelledError:
-                                pass
-                            except Exception:
-                                pass
-                            # Ensure exception is marked retrieved to prevent Python logging warnings
-                            if t.done() and not t.cancelled():
-                                _ = t.exception()
+                        if pending:
+                            await asyncio.gather(*pending, return_exceptions=True)
 
                         for t in done:
                             if not t.cancelled() and t.exception():
@@ -247,14 +304,15 @@ class GeminiLiveTranslator:
                     consecutive_errors += 1
                     err_str = str(e)
 
-                    # Check for fatal non-retryable errors
                     if "401" in err_str or "API_KEY_INVALID" in err_str or "PERMISSION_DENIED" in err_str:
                         self._emit_status("error", f"[{self.channel_id}] Fatal API Error: {e}")
                         raise
 
-                    # If resumption with handle failed (e.g. handle expired or invalid state), clear handle
-                    if self._resumption_handle:
+                    # Only invalidate the resumption handle if the connection handshake itself
+                    # rejected the handle (not when an already-connected session drops mid-stream!)
+                    if used_handle_on_connect and not connected_successfully:
                         self._resumption_handle = None
+                        consecutive_errors = max(0, consecutive_errors - 1)
 
                     if consecutive_errors >= max_consecutive_errors:
                         self._emit_status("error", f"[{self.channel_id}] Max reconnection attempts reached: {e}")

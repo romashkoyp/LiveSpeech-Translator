@@ -45,7 +45,7 @@
 
 ## 4. Development, Build & Packaging Commands
 *(Run commands inside the Python virtual environment)*
-- **Install Dependencies:** `pip install fastapi uvicorn pywebview google-genai pyaudio numpy pydantic langdetect pyinstaller`
+- **Install Dependencies:** `pip install fastapi uvicorn pywebview google-genai pyaudio numpy pydantic pyinstaller`
 - **Run App (Dev):** `python main.py`
 - **Compile UI / Resources:** *N/A (static web files are served directly; no compilation step required)*
 - **Run Tests:** `pytest` *(when test suite is added; excluded from PyInstaller binary)*

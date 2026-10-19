@@ -1,9 +1,10 @@
 """
 LiveSpeech Translator Application Entrypoint.
-Starts the FastAPI server in a background thread and launches the
-PyWebView native desktop window (with automatic browser fallback).
+Starts the FastAPI server in a background thread, waits deterministically for
+the TCP socket to bind, and launches the PyWebView native desktop window.
 """
 
+import socket
 import sys
 import threading
 import time
@@ -33,6 +34,18 @@ def run_server():
     server.run()
 
 
+def wait_for_server_ready(host: str, port: int, timeout: float = 5.0) -> bool:
+    """Poll loopback socket at 15ms intervals until Uvicorn is accepting connections."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(0.05)
+            if sock.connect_ex((host, port)) == 0:
+                return True
+        time.sleep(0.015)
+    return False
+
+
 def main():
     print("=" * 55)
     print("  LiveSpeech Translator")
@@ -42,7 +55,7 @@ def main():
     # Start FastAPI in background daemon thread
     server_thread = threading.Thread(target=run_server, daemon=True)
     server_thread.start()
-    time.sleep(0.8)
+    wait_for_server_ready(SERVER_HOST, SERVER_PORT)
 
     app_url = f"http://{SERVER_HOST}:{SERVER_PORT}"
 

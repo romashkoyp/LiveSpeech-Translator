@@ -219,7 +219,7 @@ dist\LiveSpeech-Translator.exe
 
 ```bash
 # 1. Install dependencies
-pip install fastapi uvicorn pywebview google-genai pyaudio numpy pydantic langdetect pyinstaller
+pip install fastapi uvicorn pywebview google-genai pyaudio numpy pydantic pyinstaller
 
 # 2. Run application
 python main.py

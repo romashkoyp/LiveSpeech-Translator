@@ -363,39 +363,22 @@
 
   function renderEntryText(entry) {
     if (!entry) return;
-    const query = searchInput ? searchInput.value : '';
+    const query = searchInput ? searchInput.value.trim() : '';
     const rawSrc = entry.dataset.rawSource || '';
     const rawTrans = entry.dataset.rawTranslation || '';
     const srcEl = entry.querySelector('.source-text');
     const transEl = entry.querySelector('.translation-text');
+
+    // Fast path: when no search filter is active, mutate textContent directly
+    // to bypass HTML escaping, regex allocation, and DOM parser churn.
+    if (!query) {
+      if (srcEl) srcEl.textContent = rawSrc;
+      if (transEl) transEl.textContent = rawTrans;
+      return;
+    }
+
     if (srcEl) srcEl.innerHTML = highlightText(rawSrc, query);
     if (transEl) transEl.innerHTML = highlightText(rawTrans, query);
-  }
-
-  function detectTextLanguage(text) {
-    if (!text || !text.trim()) return null;
-    const clean = text.trim();
-    if (/[\u0400-\u04FF]/.test(clean)) {
-      if (/[ієїґ]/.test(clean)) return 'uk';
-      return 'ru';
-    }
-    if (/[\u4e00-\u9fff]/.test(clean)) return 'zh-Hans';
-    if (/[\u3040-\u30ff]/.test(clean)) return 'ja';
-    if (/[\uac00-\ud7af]/.test(clean)) return 'ko';
-    if (/[\u0600-\u06FF]/.test(clean)) return 'ar';
-    if (/[\u0590-\u05FF]/.test(clean)) return 'he';
-    if (/[\u0900-\u097F]/.test(clean)) return 'hi';
-    if (/[\u0E00-\u0E7F]/.test(clean)) return 'th';
-    if (/[\u0370-\u03FF]/.test(clean)) return 'el';
-
-    const lower = clean.toLowerCase();
-    if (/\b(the|is|are|and|you|this|that|with|have|for|what|how|why|where|when|from|today)\b/i.test(lower)) return 'en';
-    if (/\b(le|la|les|est|sont|et|vous|avec|pour|dans|que|qui|bonjour|merci|oui|non)\b/i.test(lower)) return 'fr';
-    if (/\b(el|la|los|las|es|son|y|usted|con|para|por|que|hola|gracias|buenos|dias)\b/i.test(lower)) return 'es';
-    if (/\b(der|die|das|ist|sind|und|sie|mit|für|nicht|wie|guten|morgen|tag|danke|bitte)\b/i.test(lower)) return 'de';
-    if (/\b(il|la|lo|sono|è|ed|con|per|non|che|come|ciao|grazie|buongiorno)\b/i.test(lower)) return 'it';
-    if (/\b(o|a|os|as|é|são|com|para|por|que|obrigado|bom|dia|ola)\b/i.test(lower)) return 'pt-BR';
-    return null;
   }
 
   // ── Initialize ──────────────────────────────────────────────────
@@ -838,16 +821,51 @@
 
   // ── Audio Meters ────────────────────────────────────────────────
 
+  const pendingMeters = {
+    outgoing_input: null,
+    outgoing_output: null,
+    incoming_input: null,
+    incoming_output: null,
+  };
+  let meterRafId = null;
+  let scrollRafId = null;
+  let scrollVisibilityRafId = null;
+
   function formatDbLevel(level) {
     if (!level || level <= 0.001) return '-∞ dB';
     const db = Math.round(level * 60 - 60);
     return `${db} dB`;
   }
 
+  function flushMetersRaf() {
+    meterRafId = null;
+    const apply = (meterEl, valEl, level) => {
+      if (level === null || !meterEl || !valEl) return;
+      const pct = Math.min(100, Math.max(0, Math.round(level * 100)));
+      meterEl.style.width = `${pct}%`;
+      valEl.textContent = formatDbLevel(level);
+    };
+
+    apply(outgoingInputMeter, outgoingInputMeterVal, pendingMeters.outgoing_input);
+    apply(outgoingOutputMeter, outgoingOutputMeterVal, pendingMeters.outgoing_output);
+    apply(incomingInputMeter, incomingInputMeterVal, pendingMeters.incoming_input);
+    apply(incomingOutputMeter, incomingOutputMeterVal, pendingMeters.incoming_output);
+
+    pendingMeters.outgoing_input = null;
+    pendingMeters.outgoing_output = null;
+    pendingMeters.incoming_input = null;
+    pendingMeters.incoming_output = null;
+  }
+
   function setMeter(meterEl, valEl, level) {
-    const pct = Math.min(100, Math.max(0, Math.round(level * 100)));
-    meterEl.style.width = `${pct}%`;
-    valEl.textContent = formatDbLevel(level);
+    if (meterEl === outgoingInputMeter) pendingMeters.outgoing_input = level;
+    else if (meterEl === outgoingOutputMeter) pendingMeters.outgoing_output = level;
+    else if (meterEl === incomingInputMeter) pendingMeters.incoming_input = level;
+    else if (meterEl === incomingOutputMeter) pendingMeters.incoming_output = level;
+
+    if (meterRafId === null) {
+      meterRafId = requestAnimationFrame(flushMetersRaf);
+    }
   }
 
   function resetMeters() {
@@ -891,14 +909,27 @@
       } catch (e) {
         console.warn('Failed to save transcripts to server:', e);
       }
-    }, 250);
+    }, 1500);
+  }
+
+  function maybeAutoScroll() {
+    if (!autoScroll.checked || scrollRafId !== null) return;
+    scrollRafId = requestAnimationFrame(() => {
+      scrollRafId = null;
+      if (autoScroll.checked && transcriptFeed) {
+        transcriptFeed.scrollTop = transcriptFeed.scrollHeight;
+      }
+    });
   }
 
   function updateScrollButtonsVisibility() {
-    if (!transcriptFeed || !btnScrollTop || !btnScrollBottom) return;
-    const canScroll = transcriptFeed.scrollHeight > (transcriptFeed.clientHeight + 8);
-    btnScrollTop.classList.toggle('visible', canScroll);
-    btnScrollBottom.classList.toggle('visible', canScroll);
+    if (!transcriptFeed || !btnScrollTop || !btnScrollBottom || scrollVisibilityRafId !== null) return;
+    scrollVisibilityRafId = requestAnimationFrame(() => {
+      scrollVisibilityRafId = null;
+      const canScroll = transcriptFeed.scrollHeight > (transcriptFeed.clientHeight + 8);
+      btnScrollTop.classList.toggle('visible', canScroll);
+      btnScrollBottom.classList.toggle('visible', canScroll);
+    });
   }
 
   async function loadTranscriptsFromServer() {
@@ -1019,9 +1050,8 @@
     state.currentText += text;
     entry.dataset.rawSource = state.currentText;
 
-    const detectedCode = serverLang || detectTextLanguage(state.currentText);
-    if (detectedCode) {
-      const srcTag = `[${detectedCode.toUpperCase()}]:`;
+    if (serverLang) {
+      const srcTag = `[${serverLang.toUpperCase()}]:`;
       entry.dataset.srcTag = srcTag;
       const labelEl = entry.querySelector('.transcript-source .label');
       if (labelEl) labelEl.textContent = srcTag;
